@@ -69,6 +69,8 @@ def modify_date_acess(date):
     # for the year 2023 the bev data is Accessed with _20230403.gpkg instead of _20230401.gpkg! Manual modification is erQuoiered
     if '202304' in date:
         return '20230403'
+    else:
+        return date
 
 
 def generate_raster_urls(url_base, row):
@@ -79,7 +81,7 @@ def generate_raster_urls(url_base, row):
 
 
 # Define the base path
-TU_PC = False
+TU_PC = True
 if TU_PC:
     BASE_PATH = r"U:\master\metadata"
 else:
