@@ -19,6 +19,7 @@ def modify_date_acess(date):
 
 
 def query_cadastral_data(geo_url, geom, output_file):
+    # test
     """Fetches feature count within a bounding box using remote access."""
 
     if os.path.exists(output_file):
