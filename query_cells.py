@@ -41,16 +41,18 @@ def create_uniform_raster(polygon, raster_size, width, height):
     cell_height = height * raster_size
 
     # Create raster grid
-    data = {"geometry": [], "cell_geometry": [], "ids_str": []}
+    data_centroids = {"geometry": [], "ids_str": []}
+    data = {"geometry": [], "ids_str": []}
     y = maxy
     i, j = 0, 0
     while y - cell_height > miny:
         x = minx
         while x + cell_width < maxx:
             cell = box(x, y - cell_height, x + cell_width, y)
-            data["cell_geometry"].append(cell)
-            data["geometry"].append(cell.centroid)
+            data["geometry"].append(cell)
+            data_centroids["geometry"].append(cell.centroid)
             data["ids_str"].append(f"{i}_{j}")
+            data_centroids["ids_str"].append(f"{i}_{j}")
             x += cell_width
             j += 1
         i += 1
@@ -58,12 +60,13 @@ def create_uniform_raster(polygon, raster_size, width, height):
         y -= cell_height
 
     # Create GeoDataFrame
-    gdf = gpd.GeoDataFrame(data=data, crs='EPSG:31287')
-    return gdf
+    gdf_centroids = gpd.GeoDataFrame(index=data_centroids["ids_str"], geometry=data_centroids['geometry'], crs='EPSG:31287')
+    gdf = gpd.GeoDataFrame(index=data["ids_str"], geometry=data['geometry'], crs='EPSG:31287')
+    return gdf_centroids, gdf
 
 
 # Example usage,,536665
-polygon = shapely.box(516143, 473853, 536665, 496558)
+polygon = shapely.box(516143, 470000, 536665, 496558)
 # bbox = gpd.GeoDataFrame(geometry=[polygon], crs='EPSG:31287')
 # bbox.to_file("output/bbox.shp")
 
@@ -75,8 +78,11 @@ else:
 metadata = gpd.read_file(os.path.join(BASE_PATH, "intersected_regions", "ortho_cadastral_matched.shp"))
 
 raster_size = 2.5
-uni_raster = create_uniform_raster(polygon, raster_size=2.5, width=512, height=512)
-joined = gpd.sjoin(uni_raster, metadata, how="inner")
+centroids, uni_raster = create_uniform_raster(polygon, raster_size=5, width=512, height=512)
+joined = gpd.sjoin(centroids, metadata, how="inner")
 
-joined.to_file(f'output/raster_2_5.shp')
+# set geometry as polygon area of field
+joined['geometry'] = uni_raster.loc[joined.index, 'geometry']
+
+joined.to_file(f'output/raster_5.shp')
 print(joined)

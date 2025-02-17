@@ -12,12 +12,6 @@ from tqdm import tqdm
 from shapely.geometry import box
 
 
-def modify_date_acess(date):
-    # for the year 2023 the bev data is Accessed with _20230403.gpkg instead of _20230401.gpkg! Manual modification is erQuoiered
-    if '202304' in date:
-        return '20230403'
-
-
 def query_cadastral_data(geo_url, geom, output_file):
     # test
     """Fetches feature count within a bounding box using remote access."""
@@ -27,6 +21,7 @@ def query_cadastral_data(geo_url, geom, output_file):
         return
 
     layer_name = "NFL"
+    geo_url = f"https://data.bev.gv.at/download/Kataster/gpkg/national/KAT_DKM_GST_epsg31287_{geo_url}.gpkg"
 
     bbox = geom.bounds
     src = f"/vsicurl/{geo_url}"
@@ -49,38 +44,77 @@ def query_cadastral_data(geo_url, geom, output_file):
     return
 
 
-# Example usage
-BASE_PATH = "C:/Users/PC/Desktop/TU/Master/MasterThesis/data/orthofotos/all/metadata"
-metadata = gpd.read_file(os.path.join(BASE_PATH, "intersected_regions", "ortho_cadastral_matched.shp"))
+def query_cadastral_data_tiled(gdf, geo_url):
+    # test
+    """Fetches feature count within a bounding box using remote access."""
 
-#AOI = lu: 487897, 509158 rd: 474260, 528192
+    # if os.path.exists(output_file):
+    #     print(f'This geometry area: {output_file} has alReady been queryied, for this timestamp.')
+    #     return
 
-#AOI = lu: 487897, 509158 rd: 474260, 528192
+    layer_name = "NFL"
+    bbox = gdf.total_bounds
 
-time_grouped = metadata.groupby('prevTime')
-for date, group in time_grouped:
-    group_sorted = group.assign(area=group.geometry.area).sort_values(by="area", ascending=True)
+    src = f"/vsicurl/{geo_url}"
+    dst = "output/tmp.gpkg"
 
-    date = modify_date_acess(date)
+    command_sql = f'ogr2ogr -f "GPKG" -spat {bbox[0]} {bbox[1]} {bbox[2]} {bbox[3]} -dialect OGRSQL -sql "SELECT * FROM {layer_name} WHERE NS=41" {dst} {src}'
+    run_cmd(command_sql)
 
-    geo_url = f"https://data.bev.gv.at/download/Kataster/gpkg/national/KAT_DKM_GST_epsg31287_{date}.gpkg"
+    sub = gpd.read_file(dst)
+    for ind, row in tqdm(gdf.iterrows()):
+        clipped = sub.clip(mask=row.geometry, keep_geom_type=True)
+        clipped.to_file(f'output_vector/{row["index"]}.gpkg', driver='GPKG', layer='NFL')
 
-    for _, entry in group_sorted.iterrows():
-        geometry = entry.geometry
-        # query_cadastral_data(geo_url=geo_url, geom=geometry,
-        #                      output_gpkg=f'output/{entry.BL}_{entry.Operat}_{entry.prevTime}.shp')
+    # dask_gdf = dgpd.from_geopandas(sub, npartitions=8)
+    # with ProgressBar():
+    #     clipped = dask_gdf.map_partitions(lambda df: df.clip(cell_geom, keep_geom_type=True)).compute()
+    #clipped.to_file(f'{output_file}', driver='GPKG', layer='NFL')
 
-        print(f'Processing: {entry.BL}_{entry.Operat}_{entry.prevTime}')
+    # transform to clipped extent, rasterize with certain resolution
+    #command_sql2 = f'ogr2ogr -f "ESRI Shapefile" -progress -clipdst "{shapely.to_wkt(geom)}" -clipsrc "{shapely.to_wkt(geom)}" {output_gpkg} {dst}'
+    # command_sql2 = f'ogr2ogr -f "GPKG" -progress {output_gpkg} {dst}'
+    #run_cmd(command_sql2)
 
-        t1 = time.time()
+    return
 
-        if isinstance(geometry, shapely.MultiPolygon):
-            print('MuLtiGeometry: Splitting up into smaller chunks')
-            for i, sub_geometry in enumerate(geometry.geoms):
-                query_cadastral_data(geo_url=geo_url, geom=sub_geometry,
-                                     output_file=f'output/{entry.BL}_{entry.Operat}_{entry.prevTime}_{i}.gpkg')
-        else:
-            query_cadastral_data(geo_url=geo_url, geom=geometry, output_file=f'output/{entry.BL}_{entry.Operat}_{entry.prevTime}.gpkg')
 
-        t2 = time.time()
-        print('... took: ', t2-t1)
+TU_PC = False
+if TU_PC:
+    BASE_PATH = r"U:\master\metadata"
+else:
+    BASE_PATH = "C:/Users/PC/Desktop/TU/Master/MasterThesis/data/orthofotos/all/metadata"
+
+#metadata = gpd.read_file(os.path.join(BASE_PATH, "intersected_regions", "ortho_cadastral_matched.shp"))
+query_cells = gpd.read_file(f'output/raster_5.shp')
+
+polygon = shapely.box(516143, 470000, 536665, 496558)
+
+time_grouped = query_cells.groupby('vector_url')
+#for geo_url, group in time_grouped:
+# time_grouped = query_cells.groupby('prevTime')
+for geoUrl, group in time_grouped:
+    print(f'Processing: {geoUrl}')
+
+    t1 = time.time()
+    query_cadastral_data_tiled(gdf=group, geo_url=geoUrl)
+    t2 = time.time()
+    print('... took: ', t2-t1)
+
+
+    # for _, entry in group.iterrows():
+    #     geometry = shapely.from_wkt(entry.cell_geom)
+    #     print(f'Processing: {entry.BL}_{entry.Operat}_{entry.prevTime}')
+    #
+    #     t1 = time.time()
+    #
+    #     if isinstance(geometry, shapely.MultiPolygon):
+    #         print('MuLtiGeometry: Splitting up into smaller chunks')
+    #         for i, sub_geometry in enumerate(geometry.geoms):
+    #             query_cadastral_data(geo_url=date, geom=sub_geometry,
+    #                                  output_file=f'output/{entry.BL}_{entry.Operat}_{entry.prevTime}_{i}.gpkg')
+    #     else:
+    #         query_cadastral_data(geo_url=date, geom=geometry, output_file=f'output/{entry.BL}_{entry.Operat}_{entry.prevTime}.gpkg')
+    #
+    #     t2 = time.time()
+    #     print('... took: ', t2-t1)

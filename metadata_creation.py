@@ -160,8 +160,8 @@ for i, rowi in gdf_sorted.iterrows():
 gdf_sorted.drop(columns=['area', 'index_right'], inplace=True)
 
 gdf_sorted['vector_url'] = gdf_sorted["prevTime"].apply(lambda date: f"{cadaster_download_url}/KAT_DKM_GST_epsg31287_{modify_date_acess(date)}.gpkg")
-gdf_sorted['RGB_raster_url'] = gdf_sorted.apply(lambda row: generate_raster_urls(url_base=imagery_download_url, row=row, channel='RGB'), axis=1)
-gdf_sorted['NIR_raster_url'] = gdf_sorted.apply(lambda row: generate_raster_urls(url_base=imagery_download_url, row=row, channel='NIR'), axis=1)
+gdf_sorted['RGB_raster'] = gdf_sorted.apply(lambda row: generate_raster_urls(url_base=imagery_download_url, row=row, channel='RGB'), axis=1)
+gdf_sorted['NIR_raster'] = gdf_sorted.apply(lambda row: generate_raster_urls(url_base=imagery_download_url, row=row, channel='NIR'), axis=1)
 
 if TU_PC:
     gdf_sorted = gdf_sorted.set_crs('EPSG:31287')
