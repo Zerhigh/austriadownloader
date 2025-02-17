@@ -41,15 +41,15 @@ def create_uniform_raster(polygon, raster_size, width, height):
     cell_height = height * raster_size
 
     # Create raster grid
-    data = {"geometry": [], "centroids": [], "ids_str": []}
+    data = {"geometry": [], "cell_geometry": [], "ids_str": []}
     y = maxy
     i, j = 0, 0
     while y - cell_height > miny:
         x = minx
         while x + cell_width < maxx:
             cell = box(x, y - cell_height, x + cell_width, y)
-            data["geometry"].append(cell)
-            data["centroids"].append(cell.centroid)
+            data["cell_geometry"].append(cell)
+            data["geometry"].append(cell.centroid)
             data["ids_str"].append(f"{i}_{j}")
             x += cell_width
             j += 1
@@ -63,20 +63,20 @@ def create_uniform_raster(polygon, raster_size, width, height):
 
 
 # Example usage,,536665
-polygon = shapely.box(516143,473853, 536665, 496558)
+polygon = shapely.box(516143, 473853, 536665, 496558)
 # bbox = gpd.GeoDataFrame(geometry=[polygon], crs='EPSG:31287')
 # bbox.to_file("output/bbox.shp")
 
-BASE_PATH = r"C:\Users\PC\Coding\GeoQuery"
-metadata = gpd.read_file(os.path.join(BASE_PATH, "data", "ortho_cadastral_matched.shp"))
-
-# Todo1: embedd these in metadata creation function
-# metadata['vector_url'] = metadata["prevTime"].apply(lambda date: f"https://data.bev.gv.at/download/Kataster/gpkg/national/KAT_DKM_GST_epsg31287_{modify_date_acess(date)}.gpkg")
-# metadata['raster_url'] = metadata.apply(lambda row: generate_raster_urls(row), axis=1)
+TU_PC = False
+if TU_PC:
+    BASE_PATH = r"U:\master\metadata"
+else:
+    BASE_PATH = "C:/Users/PC/Desktop/TU/Master/MasterThesis/data/orthofotos/all/metadata"
+metadata = gpd.read_file(os.path.join(BASE_PATH, "intersected_regions", "ortho_cadastral_matched.shp"))
 
 raster_size = 2.5
 uni_raster = create_uniform_raster(polygon, raster_size=2.5, width=512, height=512)
 joined = gpd.sjoin(uni_raster, metadata, how="inner")
 
-uni_raster.to_file(f'output/raster_2_5.shp')
-print(uni_raster)
+joined.to_file(f'output/raster_2_5.shp')
+print(joined)

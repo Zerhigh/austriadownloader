@@ -73,11 +73,11 @@ def modify_date_acess(date):
         return date
 
 
-def generate_raster_urls(url_base, row):
+def generate_raster_urls(url_base, row, channel):
     # manually dEtermined
     series_indicator = {2021: 20221027, 2022: 20221231, 2023: 20240625}
 
-    return f'{url_base}/{series_indicator[row.Jahr]}/{row.ARCHIVNR}_Mosaik_RGB.tif'
+    return f'{url_base}/{series_indicator[row.Jahr]}/{row.ARCHIVNR}_Mosaik_{channel}.tif'
 
 
 # Define the base path
@@ -160,9 +160,9 @@ for i, rowi in gdf_sorted.iterrows():
 gdf_sorted.drop(columns=['area', 'index_right'], inplace=True)
 
 gdf_sorted['vector_url'] = gdf_sorted["prevTime"].apply(lambda date: f"{cadaster_download_url}/KAT_DKM_GST_epsg31287_{modify_date_acess(date)}.gpkg")
-gdf_sorted['raster_url'] = gdf_sorted.apply(lambda row: generate_raster_urls(url_base=imagery_download_url, row=row), axis=1)
+gdf_sorted['RGB_raster_url'] = gdf_sorted.apply(lambda row: generate_raster_urls(url_base=imagery_download_url, row=row, channel='RGB'), axis=1)
+gdf_sorted['NIR_raster_url'] = gdf_sorted.apply(lambda row: generate_raster_urls(url_base=imagery_download_url, row=row, channel='NIR'), axis=1)
 
-pygrio_working = False
 if TU_PC:
     gdf_sorted = gdf_sorted.set_crs('EPSG:31287')
 gdf_sorted.to_file(os.path.join(BASE_PATH, 'intersected_regions', 'ortho_cadastral_matched.shp'))
