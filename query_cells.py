@@ -23,12 +23,12 @@ def generate_raster_urls(row):
     return f'{url_base}/{series_indicator[row.Jahr]}/{row.ARCHIVNR}_Mosaik_RGB.tif'
 
 
-def create_uniform_raster(polygon, raster_size, width, height):
+def create_uniform_raster(polygon, pixel_size, width, height):
     """
     Creates a uniform raster within a user-defined polygon boundary and returns a GeoDataFrame.
 
     :param polygon_geojson: GeoJSON polygon defining the boundary.
-    :param raster_size: Cell size (resolution) of the raster.
+    :param pixel_size: Cell size (resolution) of the raster.
     :param width: Number of columns in the raster.
     :param height: Number of rows in the raster.
     :return: GeoDataFrame with raster cell geometries.
@@ -37,8 +37,8 @@ def create_uniform_raster(polygon, raster_size, width, height):
     minx, miny, maxx, maxy = polygon.bounds
 
     # Define cell size
-    cell_width = width * raster_size
-    cell_height = height * raster_size
+    cell_width = width * pixel_size
+    cell_height = height * pixel_size
 
     # Create raster grid
     data_centroids = {"geometry": [], "ids_str": []}
@@ -65,11 +65,6 @@ def create_uniform_raster(polygon, raster_size, width, height):
     return gdf_centroids, gdf
 
 
-# Example usage,,536665
-polygon = shapely.box(516143, 470000, 536665, 496558)
-# bbox = gpd.GeoDataFrame(geometry=[polygon], crs='EPSG:31287')
-# bbox.to_file("output/bbox.shp")
-
 TU_PC = False
 if TU_PC:
     BASE_PATH = r"U:\master\metadata"
@@ -77,12 +72,21 @@ else:
     BASE_PATH = "C:/Users/PC/Desktop/TU/Master/MasterThesis/data/orthofotos/all/metadata"
 metadata = gpd.read_file(os.path.join(BASE_PATH, "intersected_regions", "ortho_cadastral_matched.shp"))
 
-raster_size = 2.5
-centroids, uni_raster = create_uniform_raster(polygon, raster_size=5, width=512, height=512)
+parameters = {"pixel_size": 5,
+              "image_width": 512,
+              "AOI": shapely.box(516143, 470000, 536665, 496558)}
+
+# bbox = gpd.GeoDataFrame(geometry=[parameters["AOI"]], crs='EPSG:31287')
+# bbox.to_file("output/bbox.shp")
+
+centroids, uni_raster = create_uniform_raster(polygon=parameters["AOI"],
+                                              pixel_size=parameters["pixel_size"],
+                                              width=parameters["image_width"],
+                                              height=parameters["image_width"])
+
 joined = gpd.sjoin(centroids, metadata, how="inner")
 
 # set geometry as polygon area of field
 joined['geometry'] = uni_raster.loc[joined.index, 'geometry']
-
 joined.to_file(f'output/raster_5.shp')
 print(joined)
