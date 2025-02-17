@@ -71,8 +71,8 @@ BASE_PATH = r"C:\Users\PC\Coding\GeoQuery"
 metadata = gpd.read_file(os.path.join(BASE_PATH, "data", "ortho_cadastral_matched.shp"))
 
 # Todo1: embedd these in metadata creation function
-metadata['vector_url'] = metadata["prevTime"].apply(lambda date: f"https://data.bev.gv.at/download/Kataster/gpkg/national/KAT_DKM_GST_epsg31287_{modify_date_acess(date)}.gpkg")
-metadata['raster_url'] = metadata.apply(lambda row: generate_raster_urls(row), axis=1)
+# metadata['vector_url'] = metadata["prevTime"].apply(lambda date: f"https://data.bev.gv.at/download/Kataster/gpkg/national/KAT_DKM_GST_epsg31287_{modify_date_acess(date)}.gpkg")
+# metadata['raster_url'] = metadata.apply(lambda row: generate_raster_urls(row), axis=1)
 
 raster_size = 2.5
 uni_raster = create_uniform_raster(polygon, raster_size=2.5, width=512, height=512)

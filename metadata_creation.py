@@ -65,8 +65,26 @@ def parse_german_umlaute(text):
     return text
 
 
+def modify_date_acess(date):
+    # for the year 2023 the bev data is Accessed with _20230403.gpkg instead of _20230401.gpkg! Manual modification is erQuoiered
+    if '202304' in date:
+        return '20230403'
+
+
+def generate_raster_urls(url_base, row):
+    # manually dEtermined
+    series_indicator = {2021: 20221027, 2022: 20221231, 2023: 20240625}
+
+    return f'{url_base}/{series_indicator[row.Jahr]}/{row.ARCHIVNR}_Mosaik_RGB.tif'
+
+
 # Define the base path
-BASE_PATH = "C:/Users/PC/Desktop/TU/Master/MasterThesis/data/orthofotos/all/metadata"
+TU_PC = False
+if TU_PC:
+    BASE_PATH = r"U:\master\metadata"
+else:
+    BASE_PATH = "C:/Users/PC/Desktop/TU/Master/MasterThesis/data/orthofotos/all/metadata"
+
 states = gpd.read_file(os.path.join(BASE_PATH, "bundeslaender", "grenzen.shp"))
 images = gpd.read_file(os.path.join(BASE_PATH, "orthofotos", "metadata.shp"))
 
@@ -78,8 +96,10 @@ images['Date'] = images['beginLifeS'].apply(convert_date)
 # Perform spatial join
 joined = gpd.sjoin(states, images, how="inner")
 
-intersections, ts, urls, filenames = [], [], [], []
-base_download_url = "https://data.bev.gv.at/download/Kataster/shp/"
+intersections, ts = [], []
+#urls, filenames = [], []
+cadaster_download_url = 'https://data.bev.gv.at/download/Kataster/gpkg/national' #"https://data.bev.gv.at/download/Kataster/shp/"
+imagery_download_url = 'https://data.bev.gv.at/download/DOP/'
 
 for _, row in joined.iterrows():
     # extrAct keys
@@ -96,15 +116,17 @@ for _, row in joined.iterrows():
     prev_ts = get_previous_timestep(row.Date)
     ts.append(prev_ts)
 
-    filename = f'KAT_DKM_{parse_german_umlaute(row["BL"])}_SHP_{prev_ts}'
-    filenames.append(filename)
-
-    url = '/'.join((base_download_url, prev_ts, f'KAT_DKM_{parse_german_umlaute(row["BL"])}_SHP_{prev_ts}.zip'))
-    url2 = '/'.join((base_download_url, prev_ts, f'{filename}.zip'))
-    urls.append(url)
+    # filename = f'KAT_DKM_{parse_german_umlaute(row["BL"])}_SHP_{prev_ts}'
+    # filenames.append(filename)
+    #
+    # url = '/'.join((cadaster_download_url, prev_ts, f'KAT_DKM_{parse_german_umlaute(row["BL"])}_SHP_{prev_ts}.zip'))
+    # url2 = '/'.join((cadaster_download_url, prev_ts, f'{filename}.zip'))
+    # urls.append(url)
 
 # add to table
-joined["geometry"], joined["prevTime"], joined["urls"], joined["filename"] = intersections, ts, urls, filenames
+joined["geometry"], joined["prevTime"] = intersections, ts
+#joined["urls"], joined["filename"] = urls, filenames
+
 joined.reset_index(inplace=True, drop=True)
 
 # soRt db to process and keep small geometries first
@@ -134,11 +156,15 @@ for i, rowi in gdf_sorted.iterrows():
 
 # remove area attribute as its too large
 gdf_sorted.drop(columns=['area', 'index_right'], inplace=True)
-pygrio_working = False
-if pygrio_working:
-    gdf_sorted = gdf_sorted.set_crs('EPSG:31287')
-gdf_sorted.to_file(os.path.join(BASE_PATH, 'intersected_regions', 'working_borders_clipped.shp'))
 
-with open(os.path.join(BASE_PATH, 'cadastral_download_urls.json'), 'w') as file:
-    json_urls = json.dumps(list(set(urls)))
-    file.write(json_urls)
+gdf_sorted['vector_url'] = gdf_sorted["prevTime"].apply(lambda date: f"{cadaster_download_url}/KAT_DKM_GST_epsg31287_{modify_date_acess(date)}.gpkg")
+gdf_sorted['raster_url'] = gdf_sorted.apply(lambda row: generate_raster_urls(url_base=imagery_download_url, row=row), axis=1)
+
+pygrio_working = False
+if TU_PC:
+    gdf_sorted = gdf_sorted.set_crs('EPSG:31287')
+gdf_sorted.to_file(os.path.join(BASE_PATH, 'intersected_regions', 'ortho_cadastral_matched.shp'))
+
+# with open(os.path.join(BASE_PATH, 'cadastral_download_urls.json'), 'w') as file:
+#     json_urls = json.dumps(list(set(urls)))
+#     file.write(json_urls)
