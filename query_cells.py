@@ -78,7 +78,7 @@ metadata = gpd.read_file(os.path.join(BASE_PATH, "intersected_regions", "ortho_c
 parameters = {"pixel_size": 2.5,
               "image_width": 512,
               "AOI": shapely.box(516143, 470000, 536665, 496558),
-              "base_dir": r'C:\Users\PC\Coding\GeoQuery'}
+              "base_dir": BASE_DIR}
 
 parameters['output_dir'] = os.path.join(parameters["base_dir"], f'output_ps{str(parameters["pixel_size"]).replace(".", "_")}_imgs{parameters["image_width"]}')
 create_output_dirs(parameters)
