@@ -1,20 +1,14 @@
 import os
 import time
-
+import geopandas as gpd
 import numpy as np
 import rasterio
-from rasterio.features import geometry_mask
-
-from util import run_cmd
-from rasterio.features import rasterize
-import tempfile
 import shapely
-from osgeo import ogr
-import geopandas as gpd
-import dask_geopandas as dgpd
-from dask.diagnostics import ProgressBar
+
+from rasterio.features import rasterize
 from tqdm import tqdm
-from shapely.geometry import box
+
+from utils import run_cmd, create_output_dirs
 
 
 def query_cadastral_data_tiled(gdf, geo_url, parameters):
@@ -84,9 +78,13 @@ else:
 query_cells = gpd.read_file(f'output/raster_5.shp')
 #query_cells.set_index('index', inplace=True)
 
-parameters = {"pixel_size": 5,
+parameters = {"pixel_size": 2.5,
               "image_width": 512,
-              "AOI": shapely.box(516143, 470000, 536665, 496558)}
+              "AOI": shapely.box(516143, 470000, 536665, 496558),
+              "base_dir": r'C:\Users\PC\Coding\GeoQuery'}
+
+parameters['output_dir'] = os.path.join(parameters["base_dir"], f'output_ps{str(parameters["pixel_size"]).replace(".", "_")}_imgs{parameters["image_width"]}')
+create_output_dirs(parameters)
 
 time_grouped = query_cells.groupby('vector_url')
 for geoUrl, group in time_grouped:

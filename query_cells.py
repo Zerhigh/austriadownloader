@@ -1,11 +1,10 @@
-import rasterio
-import numpy as np
+import os
 import geopandas as gpd
 import shapely
-import os
-from rasterio.transform import from_origin
+
 from shapely.geometry import box
-import json
+
+from utils import create_output_dirs
 
 
 def modify_date_acess(date):
@@ -72,9 +71,13 @@ else:
     BASE_PATH = "C:/Users/PC/Desktop/TU/Master/MasterThesis/data/orthofotos/all/metadata"
 metadata = gpd.read_file(os.path.join(BASE_PATH, "intersected_regions", "ortho_cadastral_matched.shp"))
 
-parameters = {"pixel_size": 5,
+parameters = {"pixel_size": 2.5,
               "image_width": 512,
-              "AOI": shapely.box(516143, 470000, 536665, 496558)}
+              "AOI": shapely.box(516143, 470000, 536665, 496558),
+              "base_dir": r'C:\Users\PC\Coding\GeoQuery'}
+
+parameters['output_dir'] = os.path.join(parameters["base_dir"], f'output_ps{str(parameters["pixel_size"]).replace(".", "_")}_imgs{parameters["image_width"]}')
+create_output_dirs(parameters)
 
 # bbox = gpd.GeoDataFrame(geometry=[parameters["AOI"]], crs='EPSG:31287')
 # bbox.to_file("output/bbox.shp")
@@ -88,5 +91,5 @@ joined = gpd.sjoin(centroids, metadata, how="inner")
 
 # set geometry as polygon area of field
 joined['geometry'] = uni_raster.loc[joined.index, 'geometry']
-joined.to_file(f'output/raster_5.shp')
+joined.to_file(f'{parameters["output_dir"]}/raster_{str(parameters["pixel_size"]).replace(".", "_")}.shp')
 print(joined)

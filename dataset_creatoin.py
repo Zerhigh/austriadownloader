@@ -2,7 +2,7 @@ import os
 import requests
 import geopandas as gpd
 from urllib.parse import urlparse
-from util import run_cmd
+from utils import run_cmd
 
 
 class GeoDataDownloader:
