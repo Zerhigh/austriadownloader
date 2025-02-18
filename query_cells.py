@@ -64,11 +64,15 @@ def create_uniform_raster(polygon, pixel_size, width, height):
     return gdf_centroids, gdf
 
 
-TU_PC = False
+TU_PC = True
 if TU_PC:
     BASE_PATH = r"U:\master\metadata"
+    BASE_DIR = r'C:\Users\shollend\PycharmProjects\GeoQuery'
 else:
     BASE_PATH = "C:/Users/PC/Desktop/TU/Master/MasterThesis/data/orthofotos/all/metadata"
+    BASE_DIR = r'C:\Users\PC\Coding\GeoQuery'
+
+
 metadata = gpd.read_file(os.path.join(BASE_PATH, "intersected_regions", "ortho_cadastral_matched.shp"))
 
 parameters = {"pixel_size": 2.5,

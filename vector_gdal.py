@@ -80,16 +80,18 @@ def query_cadastral_data_tiled(gdf, geo_url, parameters):
     return
 
 
-TU_PC = False
+TU_PC = True
 if TU_PC:
     BASE_PATH = r"U:\master\metadata"
+    BASE_DIR = r'C:\Users\shollend\PycharmProjects\GeoQuery'
 else:
     BASE_PATH = "C:/Users/PC/Desktop/TU/Master/MasterThesis/data/orthofotos/all/metadata"
+    BASE_DIR = r'C:\Users\PC\Coding\GeoQuery'
 
 parameters = {"pixel_size": 2.5,
               "image_width": 512,
               "AOI": shapely.box(516143, 470000, 536665, 496558),
-              "base_dir": r'C:\Users\PC\Coding\GeoQuery'}
+              "base_dir": BASE_DIR}
 
 parameters['output_dir'] = os.path.join(parameters["base_dir"], f'output_ps{str(parameters["pixel_size"]).replace(".", "_")}_imgs{parameters["image_width"]}')
 create_output_dirs(parameters)
