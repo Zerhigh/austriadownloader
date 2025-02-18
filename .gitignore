@@ -1,6 +1,6 @@
 *.gpkg
-data
 output
 .idea
 output_raster_mask
-output_*
+output_ps2_5_imgs512/output_raster_mask
+output_ps2_5_imgs512/output_vector

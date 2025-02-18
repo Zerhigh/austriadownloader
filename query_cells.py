@@ -64,7 +64,7 @@ def create_uniform_raster(polygon, pixel_size, width, height):
     return gdf_centroids, gdf
 
 
-TU_PC = True
+TU_PC = False
 if TU_PC:
     BASE_PATH = r"U:\master\metadata"
     BASE_DIR = r'C:\Users\shollend\PycharmProjects\GeoQuery'

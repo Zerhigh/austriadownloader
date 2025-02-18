@@ -80,7 +80,7 @@ def query_cadastral_data_tiled(gdf, geo_url, parameters):
     return
 
 
-TU_PC = True
+TU_PC = False
 if TU_PC:
     BASE_PATH = r"U:\master\metadata"
     BASE_DIR = r'C:\Users\shollend\PycharmProjects\GeoQuery'
