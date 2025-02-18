@@ -50,8 +50,8 @@ def create_uniform_raster(polygon, pixel_size, width, height):
             cell = box(x, y - cell_height, x + cell_width, y)
             data["geometry"].append(cell)
             data_centroids["geometry"].append(cell.centroid)
-            data["ids_str"].append(f"{i}_{j}")
-            data_centroids["ids_str"].append(f"{i}_{j}")
+            data["ids_str"].append(f'{i}_{j}')
+            data_centroids["ids_str"].append(f'{i}_{j}')
             x += cell_width
             j += 1
         i += 1
