@@ -29,6 +29,7 @@ class DataRequest(BaseModel):
         shape (tuple[int, int, int]): Image dimensions as (channels, height, width).
             Channels must be either 3 (RGB) or 4 (RGBN).
         outpath (Path | str): Directory path where output files will be saved.
+        create_gpkg (bool) = False: Indicates if the vectoried but unclipped tiles should be saved as individual .GPKG
 
     Raises:
         ValueError: If any of the parameters fail validation.
@@ -40,6 +41,7 @@ class DataRequest(BaseModel):
     pixel_size: float
     shape: ImageShape
     outpath: Path | str
+    create_gpkg: bool = False
 
     @field_validator("shape")
     @classmethod

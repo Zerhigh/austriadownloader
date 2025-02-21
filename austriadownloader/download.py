@@ -8,22 +8,21 @@ RGBN raster data, vector data processing, and rasterization operations.
 The module supports various pixel sizes through overview levels and ensures proper
 coordinate transformations between different coordinate reference systems (CRS).
 """
-import copy
 from pathlib import Path
 from typing import Final, TypeAlias, Literal, Dict, Tuple
+
+import fiona
+import geopandas as gpd
 import numpy as np
 import pandas as pd
 import rasterio as rio
-import fiona
 from pyproj import Transformer
-from shapely.geometry import Point, box, shape, mapping
-from rasterio.windows import Window
-
-from austriadownloader.datarequest import DataRequest
-from austriadownloader.data import AUSTRIA_CADASTRAL
-
-import geopandas as gpd
 from rasterio.features import rasterize
+from rasterio.windows import Window
+from shapely.geometry import Point, shape
+
+from austriadownloader.data import AUSTRIA_CADASTRAL
+from austriadownloader.datarequest import DataRequest
 
 # Type aliases for improved readability
 Coordinates: TypeAlias = Tuple[float, float]
@@ -84,7 +83,7 @@ def download(request: DataRequest) -> Path:
         raise IOError(f"Failed to process data request: {str(e)}") from e
 
 
-def download_vector(request: DataRequest) -> Path:
+def download_vector(request: DataRequest) -> None:
     """
     Download and process vector data for the specified location.
 
@@ -114,20 +113,19 @@ def download_vector(request: DataRequest) -> Path:
         bbox = calculate_bbox(
             point_planar,
             pixel_size=request.pixel_size,
-            #shape=request.shape[1:]
-            shape=(request.shape[1], request.shape[1])
+            shape=request.shape[1:]
         )
 
         # Process and save vector data
-        output_path = request.outpath / f"target_{request.id}.gpkg"
+        #output_path = request.outpath / f"target_{request.id}.gpkg"
         process_vector_data(
             vector_url=vector_data["vector_url"],
             bbox=bbox,
-            output_path=output_path,
+            #output_path=output_path,
             request=request
         )
 
-        return output_path
+        return #output_path
 
     except Exception as e:
         raise IOError(f"Vector data processing failed: {str(e)}") from e
@@ -252,59 +250,47 @@ def calculate_bbox(
 def process_vector_data(
         vector_url: str,
         bbox: BoundingBox,
-        output_path: Path,
+        #output_path: Path,
         request: DataRequest
 ) -> None:
     """Process and save vector data within the specified bounding box."""
     with fiona.open(vector_url, layer="NFL") as src:
-        profile = src.profile
-        # filtered_features = [
-        #     feat for feat in src.filter(bbox=bbox)
-        #     if feat["properties"].get("NS") == BUILDING_CLASS
-        # ]
-
-        # issue: bbox is reducing from center of pixel -> reduces extent for polygon based vector clipping bbox
-
-        # conversion to gdf
+        #profile = src.profile
+        # conversion to gdf: remove any property values
         filtered_features = [
-            {"geometry": shape(feat["geometry"]), "properties": feat["properties"]}
+            {"geometry": shape(feat["geometry"])} #, "properties": feat["properties"]}
                 for feat in src.filter(bbox=bbox)
                     if feat["properties"].get("NS") == BUILDING_CLASS
         ]
 
-        # add = request.pixel_size / 2
-        # vbbox = (bbox[0]-add, bbox[1]-add, bbox[2]+add, bbox[3]+add)
-
         gdf = gpd.GeoDataFrame(filtered_features, crs=src.crs)
-        #clipped = gdf.clip(mask=box(*vbbox), keep_geom_type=True)
-        gdf.to_file(output_path, driver='GPKG', layer='NFL')
 
-        with rio.open(request.outpath / f"input_{request.id}.tif") as src:
-            # Rasterize the geometries into the raster
-            #clipped = gpd.read_file(request.outpath / f"target_{request.id}.gpkg")
-            #clipped.to_crs(crs=src.crs, inplace=True)
+        # Rasterize the geometries into the raster
+        with rio.open(request.outpath / f"input_{request.id}.tif") as img_src:
+            # convert geoemtries to raster specific crs
+            gdf.to_crs(crs=img_src.crs, inplace=True)
 
-            gdf.to_crs(crs=src.crs, inplace=True)
+            # if requested provide transformed vector file
+            if request.create_gpkg:
+                gdf.to_file(request.outpath / f"target_{request.id}.gpkg", driver='GPKG', layer='NFL')
             shapes = [(geom, 1) for geom in gdf.geometry]  # Assign value 1 to features
-            binary_raster = rasterize(shapes, out_shape=(request.shape[1], request.shape[1]), transform=src.transform,
+            binary_raster = rasterize(shapes, out_shape=request.shape[1:], transform=img_src.transform,
                                       fill=0)
 
             # Save the rasterized binary image
             with rio.open(
-                    fp=request.outpath / f"input_{request.id}_rasterized.tif",
+                    fp=request.outpath / f"target_{request.id}.tif",
                     mode="w+",
                     driver="GTiff",
                     height=request.shape[1],
                     width=request.shape[1],
                     count=1,
                     dtype=np.uint8,
-                    crs=src.crs,
-                    transform=src.transform
+                    crs=img_src.crs,
+                    transform=img_src.transform
             ) as dst:
                 dst.write(binary_raster, 1)
-
-    # with fiona.open(output_path, "w", **profile) as dst:
-    #     dst.writerecords(filtered_features)
+    return
 
 
 def process_rgb_raster(
@@ -436,26 +422,5 @@ def rasterize_vector(request: DataRequest) -> None:
     
     This is a placeholder for the rasterization implementation.
     """
-    with rio.open(request.outpath / f"input_{request.id}.tif") as src:
-
-        # Rasterize the geometries into the raster
-        clipped = gpd.read_file(request.outpath / f"target_{request.id}.gpkg")
-        clipped.to_crs(crs=src.crs, inplace=True)
-        shapes = [(geom, 1) for geom in clipped.geometry]  # Assign value 1 to features
-        binary_raster = rasterize(shapes, out_shape=(request.shape[1], request.shape[1]), transform=src.transform, fill=0)
-
-        # Save the rasterized binary image
-        with rio.open(
-                fp=request.outpath / f"input_{request.id}_rasterized.tif",
-                mode="w+",
-                driver="GTiff",
-                height=request.shape[1],
-                width=request.shape[1],
-                count=1,
-                dtype=np.uint8,
-                crs=clipped.crs,
-                transform=src.transform
-        ) as dst:
-            dst.write(binary_raster, 1)
-
-    pass  # Implementation needed
+    # Implementation done in process_vector_data
+    pass
