@@ -4,3 +4,6 @@ output
 output_raster_mask
 output_ps2_5_imgs512/output_raster_mask
 output_ps2_5_imgs512/output_vector
+geoquery/__pycache__/
+
+demo/
