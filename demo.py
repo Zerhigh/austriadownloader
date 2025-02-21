@@ -3,16 +3,6 @@ import austriadownloader
 
 pathlib.Path("demo/").mkdir(parents=True, exist_ok=True)
 
-request = austriadownloader.DataRequest(
-    id="demo_salzburg_bldg",
-    lat=47.80599683324095, #47.200434,
-    lon=13.036799929282678, #14.673408,
-    pixel_size=1.6,
-    shape=(4, 1024, 1024),  # for RGB just use (3, 1024, 1024)
-    outpath="demo/paper_figures/",
-    mask_label=41,  # Base: Buildings
-    create_gpkg=False,
-)
 
 land_use_codes = {
     41: "Buildings",
@@ -42,7 +32,27 @@ land_use_codes = {
     54: "Alps"
 }
 
-austriadownloader.download(request, verbose=True)
+agg_codes = {'buildings': 41,
+             'water': (59, 60),
+             'agricultural': (40, 48, 57),
+             'forest': (55, 56, 58),
+             'railway': 92,
+             'roads': (42, 65, 95)}
+
+for names, codes in agg_codes.items():
+    print('--------------------------')
+    request = austriadownloader.DataRequest(
+        id=f"demo_salzburg_{names}",
+        lat=47.80599683324095, #47.200434,
+        lon=13.036799929282678, #14.673408,
+        pixel_size=1.6,
+        shape=(4, 1024, 1024),  # for RGB just use (3, 1024, 1024)
+        outpath="demo/paper_figures/",
+        mask_label=codes,  # Base: Buildings
+        create_gpkg=False,
+    )
+
+    austriadownloader.download(request, verbose=True)
 
 
 # import pathlib
