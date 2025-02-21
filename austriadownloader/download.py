@@ -47,15 +47,16 @@ VALID_OVERVIEWS: Final[Dict[float, OverviewLevel]] = {
 # Constants for coordinate reference systems
 WGS84: Final[str] = "EPSG:4326"
 AUSTRIA_CRS: Final[str] = "EPSG:31287"
-BUILDING_CLASS: Final[int] = 41  # Building class code
+#BUILDING_CLASS: Final[int] = 92  # Building class code
 
 
-def download(request: DataRequest) -> Path:
+def download(request: DataRequest, verbose: bool) -> Path:
     """
     Download and process both raster and vector data for the requested area.
 
     Args:
         request: DataRequest object containing download parameters and specifications.
+        verbose: bool triggers output
 
     Returns:
         Path: Output directory containing the processed data.
@@ -67,15 +68,24 @@ def download(request: DataRequest) -> Path:
     try:
         # Download appropriate raster data based on channel count
         if request.shape[0] == 3:
+            if verbose:
+                print("Downloading RGB raster data.")
             download_rasterdata_rgb(request)
         elif request.shape[0] == 4:
+            if verbose:
+                print("Downloading RGB and NIR raster data.")
             download_rasterdata_rgbn(request)
         else:
-            raise ValueError(f"Invalid channel count: {request.shape[0]}. Must be 3 (RGB) or 4 (RGBN).")
+            raise ValueError(f"Invalid channel count: {request.shape[0]}. Must be 3 (RGB) or 4 (RGB and NIR).")
 
         # Process vector data
+        if verbose:
+            print(f"Downloading vector cadastral data: "
+                  f"\n    Code(s): {request.mask_label}")
         download_vector(request)
-        #rasterize_vector(request)
+
+        if verbose:
+            print(f"Finished downloading and processing data to: {request.outpath}")
 
         return request.outpath
 
@@ -250,17 +260,15 @@ def calculate_bbox(
 def process_vector_data(
         vector_url: str,
         bbox: BoundingBox,
-        #output_path: Path,
         request: DataRequest
 ) -> None:
     """Process and save vector data within the specified bounding box."""
     with fiona.open(vector_url, layer="NFL") as src:
-        #profile = src.profile
-        # conversion to gdf: remove any property values
+        # conversion to gdf: removed any property values
         filtered_features = [
-            {"geometry": shape(feat["geometry"])} #, "properties": feat["properties"]}
+            {"geometry": shape(feat["geometry"])}
                 for feat in src.filter(bbox=bbox)
-                    if feat["properties"].get("NS") == BUILDING_CLASS
+                    if feat["properties"].get("NS") in request.mask_label
         ]
 
         gdf = gpd.GeoDataFrame(filtered_features, crs=src.crs)
@@ -300,34 +308,6 @@ def process_rgb_raster(
         overview_level: int
 ) -> None:
     """Process and save RGB raster data."""
-    with rio.open(raster_path, overview_level=overview_level) as src:
-        window, profile = prepare_raster_window(src, point, request)
-        data = src.read(window=window)
-
-        save_raster_data(
-            data=data,
-            profile=profile,
-            request=request,
-            window=window,
-            transform=src.transform
-        )
-
-def process_LC_raster(
-        raster_path: str,
-        request: DataRequest,
-        point: Coordinates,
-        overview_level: int
-) -> None:
-    """Process and save RGB raster data."""
-
-    #functon call
-    # process_LC_raster(
-    #     raster_path='https://data.bev.gv.at/download/LC/20231015/AT_Gesamtmosaik_LC_2020-2023.tif',
-    #     request=request,
-    #     point=(request.lon, request.lat),
-    #     overview_level=overview_level
-    # )
-
     with rio.open(raster_path, overview_level=overview_level) as src:
         window, profile = prepare_raster_window(src, point, request)
         data = src.read(window=window)

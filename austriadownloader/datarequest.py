@@ -16,6 +16,7 @@ ImageShape = tuple[ChannelCount, int, int]
 
 # Valid pixel sizes in meters
 VALID_PIXEL_SIZES: Final = (0.2, 0.4, 0.8, 1.6, 3.2, 6.4, 12.8, 25.6, 51.2, 102.4, 204.8)
+VALID_MASK_LABELS: Final = (40, 41, 42, 48, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 72, 83, 84, 87, 88, 92, 95, 96)
 
 
 class DataRequest(BaseModel):
@@ -30,6 +31,9 @@ class DataRequest(BaseModel):
             Channels must be either 3 (RGB) or 4 (RGBN).
         outpath (Path | str): Directory path where output files will be saved.
         create_gpkg (bool) = False: Indicates if the vectoried but unclipped tiles should be saved as individual .GPKG
+        mask_label (list[int]| tuple[int] | int): Indicates Cadaster mask(s) to be extracted, any provided mask will be
+            merged and a binary mask will be created. Creating multi-class msks is not supported.
+            Classes and Codes:
 
     Raises:
         ValueError: If any of the parameters fail validation.
@@ -41,6 +45,7 @@ class DataRequest(BaseModel):
     pixel_size: float
     shape: ImageShape
     outpath: Path | str
+    mask_label: list[int] | tuple[int] | int
     create_gpkg: bool = False
 
     @field_validator("shape")
@@ -115,6 +120,35 @@ class DataRequest(BaseModel):
             )
         
         return value
+
+    @field_validator("mask_label")
+    @classmethod
+    def validate_mask_label(cls, value: list[int] | tuple[int] | int) -> list[int] | tuple[int] | int:
+        """
+        Validate the mask_label.
+
+        Args:
+            value: Mask label of cadastral registry
+
+        Returns:
+            float: Validated mask label.
+
+        Raises:
+            ValueError: If the mask label is not in the predefined list.
+        """
+        if isinstance(value, (list, tuple)):
+            for val in value:
+                if val not in VALID_MASK_LABELS:
+                    raise ValueError(
+                        f"Invalid mask label: {val}. Must be one of {VALID_MASK_LABELS}"
+                    )
+            return value
+        else:
+            if value not in VALID_MASK_LABELS:
+                raise ValueError(
+                    f"Invalid mask label: {value}. Must be one of {VALID_MASK_LABELS}"
+                )
+            return [value]
 
     class Config:
         """Pydantic model configuration."""

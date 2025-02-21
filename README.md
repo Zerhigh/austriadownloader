@@ -46,4 +46,35 @@ To enable the code coverage reports, see [here](https://fpgmaas.github.io/cookie
 
 ---
 
+## Available Classes
+
+| **Category**       | **Code** | **Subcategory**                               |
+|--------------------|----------|-----------------------------------------------|
+| Building areas      | 41       | Buildings                                     |
+|                    | 83       | Adjacent building areas                       |
+| Water body         | 59       | Flowing water                                 |
+|                    | 60       | Standing water                                |
+|                    | 61       | Wetlands                                      |
+|                    | 64       | Waterside areas                               |
+| Agricultural       | 40       | Permanent crops or gardens                    |
+|                    | 48       | Fields, meadows or pastures                  |
+|                    | 57       | Overgrown areas                               |
+| Forest             | 55       | Krummholz                                     |
+|                    | 56       | Forests                                       |
+|                    | 58       | Forest roads                                  |
+| Other              | 42       | Car parks                                     |
+|                    | 62       | Low vegetation areas                          |
+|                    | 63       | Operating area                                |
+|                    | 65       | Roadside areas                                |
+|                    | 72       | Cemetery                                      |
+|                    | 84       | Mining areas, dumps and landfills            |
+|                    | 87       | Rock and scree surfaces                       |
+|                    | 88       | Glaciers                                      |
+|                    | 92       | Rail transport areas                          |
+|                    | 95       | Road traffic areas                            |
+|                    | 96       | Recreational area                             |
+| Gardens            | 52       | Gardens                                       |
+| Alps               | 54       | Alps                                          |
+
+
 Repository initiated with [fpgmaas/cookiecutter-poetry](https://github.com/fpgmaas/cookiecutter-poetry).
