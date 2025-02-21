@@ -29,8 +29,8 @@ BoundingBox: TypeAlias = Tuple[float, float, float, float]
 
 # Mapping of pixel sizes to overview levels
 VALID_OVERVIEWS: Final[Dict[float, OverviewLevel]] = {
-    0.2: -1,   # Original resolution
-    0.4: 0,    # First overview
+    0.2: -1,  # Original resolution
+    0.4: 0,  # First overview
     0.8: 1,
     1.6: 2,
     3.2: 3,
@@ -46,6 +46,7 @@ VALID_OVERVIEWS: Final[Dict[float, OverviewLevel]] = {
 WGS84: Final[str] = "EPSG:4326"
 AUSTRIA_CRS: Final[str] = "EPSG:31287"
 BUILDING_CLASS: Final[int] = 41  # Building class code
+
 
 def download(request: DataRequest) -> Path:
     """
@@ -69,15 +70,16 @@ def download(request: DataRequest) -> Path:
             download_rasterdata_rgbn(request)
         else:
             raise ValueError(f"Invalid channel count: {request.shape[0]}. Must be 3 (RGB) or 4 (RGBN).")
-        
+
         # Process vector data
         download_vector(request)
         rasterize_vector(request)
-        
+
         return request.outpath
-    
+
     except Exception as e:
         raise IOError(f"Failed to process data request: {str(e)}") from e
+
 
 def download_vector(request: DataRequest) -> Path:
     """
@@ -101,17 +103,17 @@ def download_vector(request: DataRequest) -> Path:
             to_crs=AUSTRIA_CRS
         )
         point_geometry = Point(*point_planar)
-        
+
         # Find intersecting cadastral data
         vector_data = get_intersecting_cadastral(point_geometry)
-        
+
         # Calculate bounding box
         bbox = calculate_bbox(
             point_planar,
             pixel_size=request.pixel_size,
             shape=request.shape[1:]
         )
-        
+
         # Process and save vector data
         output_path = request.outpath / f"target_{request.id}.gpkg"
         process_vector_data(
@@ -119,11 +121,12 @@ def download_vector(request: DataRequest) -> Path:
             bbox=bbox,
             output_path=output_path
         )
-        
+
         return output_path
-    
+
     except Exception as e:
         raise IOError(f"Vector data processing failed: {str(e)}") from e
+
 
 def download_rasterdata_rgb(request: DataRequest) -> pd.Series:
     """
@@ -146,22 +149,23 @@ def download_rasterdata_rgb(request: DataRequest) -> pd.Series:
             to_crs=AUSTRIA_CRS
         )
         point_geometry = Point(*point_planar)
-        
+
         # Get appropriate raster data
         raster_data = get_intersecting_cadastral(point_geometry)
         overview_level = VALID_OVERVIEWS[request.pixel_size]
-        
+
         process_rgb_raster(
             raster_path=raster_data["RGB_raster"],
             request=request,
             point=(request.lon, request.lat),
             overview_level=overview_level
         )
-        
+
         return raster_data
-    
+
     except Exception as e:
         raise IOError(f"RGB raster processing failed: {str(e)}") from e
+
 
 def download_rasterdata_rgbn(request: DataRequest) -> pd.Series:
     """
@@ -184,11 +188,11 @@ def download_rasterdata_rgbn(request: DataRequest) -> pd.Series:
             to_crs=AUSTRIA_CRS
         )
         point_geometry = Point(*point_planar)
-        
+
         # Get appropriate raster data
         raster_data = get_intersecting_cadastral(point_geometry)
         overview_level = VALID_OVERVIEWS[request.pixel_size]
-        
+
         process_rgbn_raster(
             rgb_path=raster_data["RGB_raster"],
             nir_path=raster_data["NIR_raster"],
@@ -196,23 +200,23 @@ def download_rasterdata_rgbn(request: DataRequest) -> pd.Series:
             point=(request.lon, request.lat),
             overview_level=overview_level
         )
-        
+
         return raster_data
-    
+
     except Exception as e:
         raise IOError(f"RGBN raster processing failed: {str(e)}") from e
 
 
 # Helper functions
-
 def transform_coordinates(
-    point: Coordinates,
-    from_crs: str,
-    to_crs: str
+        point: Coordinates,
+        from_crs: str,
+        to_crs: str
 ) -> Coordinates:
     """Transform coordinates between coordinate reference systems."""
     transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
     return transformer.transform(*point)
+
 
 def get_intersecting_cadastral(point_geometry: Point) -> pd.Series:
     """Get cadastral data intersecting with the given point."""
@@ -223,10 +227,11 @@ def get_intersecting_cadastral(point_geometry: Point) -> pd.Series:
         raise ValueError("Location is outside Austria's cadastral boundaries")
     return intersecting.iloc[0]
 
+
 def calculate_bbox(
-    point: Coordinates,
-    pixel_size: float,
-    shape: Tuple[int, int]
+        point: Coordinates,
+        pixel_size: float,
+        shape: Tuple[int, int]
 ) -> BoundingBox:
     """Calculate bounding box for the given point and dimensions."""
     x_size = (pixel_size * shape[1]) // 2
@@ -238,10 +243,11 @@ def calculate_bbox(
         point[1] + y_size
     )
 
+
 def process_vector_data(
-    vector_url: str,
-    bbox: BoundingBox,
-    output_path: Path
+        vector_url: str,
+        bbox: BoundingBox,
+        output_path: Path
 ) -> None:
     """Process and save vector data within the specified bounding box."""
     with fiona.open(vector_url, layer="NFL") as src:
@@ -250,21 +256,22 @@ def process_vector_data(
             feat for feat in src.filter(bbox=bbox)
             if feat["properties"].get("NS") == BUILDING_CLASS
         ]
-        
+
         with fiona.open(output_path, "w", **profile) as dst:
             dst.writerecords(filtered_features)
 
+
 def process_rgb_raster(
-    raster_path: str,
-    request: DataRequest,
-    point: Coordinates,
-    overview_level: int
+        raster_path: str,
+        request: DataRequest,
+        point: Coordinates,
+        overview_level: int
 ) -> None:
     """Process and save RGB raster data."""
     with rio.open(raster_path, overview_level=overview_level) as src:
         window, profile = prepare_raster_window(src, point, request)
         data = src.read(window=window)
-        
+
         save_raster_data(
             data=data,
             profile=profile,
@@ -273,22 +280,51 @@ def process_rgb_raster(
             transform=src.transform
         )
 
+def process_LC_raster(
+        raster_path: str,
+        request: DataRequest,
+        point: Coordinates,
+        overview_level: int
+) -> None:
+    """Process and save RGB raster data."""
+
+    #functon call
+    # process_LC_raster(
+    #     raster_path='https://data.bev.gv.at/download/LC/20231015/AT_Gesamtmosaik_LC_2020-2023.tif',
+    #     request=request,
+    #     point=(request.lon, request.lat),
+    #     overview_level=overview_level
+    # )
+
+    with rio.open(raster_path, overview_level=overview_level) as src:
+        window, profile = prepare_raster_window(src, point, request)
+        data = src.read(window=window)
+
+        save_raster_data(
+            data=data,
+            profile=profile,
+            request=request,
+            window=window,
+            transform=src.transform
+        )
+
+
 def process_rgbn_raster(
-    rgb_path: str,
-    nir_path: str,
-    request: DataRequest,
-    point: Coordinates,
-    overview_level: int
+        rgb_path: str,
+        nir_path: str,
+        request: DataRequest,
+        point: Coordinates,
+        overview_level: int
 ) -> None:
     """Process and save RGBN raster data."""
     with rio.open(rgb_path, overview_level=overview_level) as src_rgb:
         window, profile = prepare_raster_window(src_rgb, point, request)
         data_rgb = src_rgb.read(window=window)
-        
+
         with rio.open(nir_path, overview_level=overview_level) as src_nir:
             data_nir = src_nir.read(window=window)
             data_total = np.concatenate([data_rgb, data_nir], axis=0)
-            
+
             profile.update({'count': 4})
             save_raster_data(
                 data=data_total,
@@ -298,10 +334,11 @@ def process_rgbn_raster(
                 transform=src_rgb.transform
             )
 
+
 def prepare_raster_window(
-    src: rio.DatasetReader,
-    point: Coordinates,
-    request: DataRequest
+        src: rio.DatasetReader,
+        point: Coordinates,
+        request: DataRequest
 ) -> Tuple[Window, Dict]:
     """Prepare raster window and profile for data extraction."""
     point_raster = transform_coordinates(
@@ -309,7 +346,7 @@ def prepare_raster_window(
         from_crs=WGS84,
         to_crs=src.crs
     )
-    
+
     y, x = src.index(*point_raster)
     window = Window(
         x - request.shape[2] // 2,
@@ -317,7 +354,7 @@ def prepare_raster_window(
         request.shape[2],
         request.shape[1]
     )
-    
+
     profile = src.profile.copy()
     profile.update({
         'height': request.shape[1],
@@ -326,24 +363,26 @@ def prepare_raster_window(
         'driver': 'GTiff',
         'photometric': None
     })
-    
+
     return window, profile
 
+
 def save_raster_data(
-    data: np.ndarray,
-    profile: Dict,
-    request: DataRequest,
-    window: Window,
-    transform: rio.Affine
+        data: np.ndarray,
+        profile: Dict,
+        request: DataRequest,
+        window: Window,
+        transform: rio.Affine
 ) -> None:
     """Save raster data to disk."""
     profile.update({
         'transform': rio.windows.transform(window, transform)
     })
-    
+
     output_path = request.outpath / f"input_{request.id}.tif"
     with rio.open(output_path, "w", **profile) as dst:
         dst.write(data)
+
 
 def rasterize_vector(request: DataRequest) -> None:
     """
@@ -351,4 +390,5 @@ def rasterize_vector(request: DataRequest) -> None:
     
     This is a placeholder for the rasterization implementation.
     """
+
     pass  # Implementation needed

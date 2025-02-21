@@ -29,12 +29,13 @@ import austriadownloader
 pathlib.Path("demo/").mkdir(parents=True, exist_ok=True)
 
 request = austriadownloader.DataRequest(
-    id = "demo02768",
+    id="demo_LC",
     lat=47.200434,
     lon=14.673408,
     pixel_size=1.6,
     shape=(4, 1024, 1024), # for RGB just use (3, 1024, 1024)
-    outpath="demo/"
+    outpath="demo/",
+    landcover=True
 )
 
 
