@@ -48,6 +48,7 @@ BASE_DIR = r'C:\Users\PC\Coding\GeoQuery'
 parameters = {"pixel_size": 2.5,
               "image_width": 512,
               "AOI": shapely.box(516143, 470000, 536665, 496558),
+              #aoi=[516143, 470000, 536665, 496558],  # [min_x, min_y, max_x, max_y]
               "base_dir": BASE_DIR,
               "multispectral": True, # should include RGB and NIR image bands
               }
@@ -56,9 +57,29 @@ parameters = {"pixel_size": 2.5,
 parameters['output_dir'] = os.path.join(parameters["base_dir"], f'output_ps{str(parameters["pixel_size"]).replace(".", "_")}_imgs{parameters["image_width"]}')
 create_output_dirs(parameters)
 
+metadata = gpd.read_file(os.path.join(BASE_DIR, "data", "ortho_cadastral_matched.shp"))
+aoi = gpd.GeoDataFrame(geometry=[parameters["AOI"] for i in range(len(metadata))], crs=31287)
+
+Res = aoi.intersection(metadata)
+
+
 # load metadata table for querying information
 query_cells = gpd.read_file(f'{parameters["output_dir"]}/raster_{str(parameters["pixel_size"]).replace(".", "_")}.shp')
 query_cells.set_index('index', inplace=True)
+
+geoms_ = []
+for _, row in metadata.iterrows():
+    geom = row.geometry
+    if isinstance(geom, shapely.MultiPolygon):
+        for g in geom.geoms:
+            geoms_.append(g)
+    else:
+        geoms_.append(geom)
+    pass
+
+geoms_frame = gpd.GeoDataFrame(geometry=geoms_, crs=31287)
+geoms_frame.to_file(f'test.shp')
+
 
 # seperate gdf into sub_gdfs to limit number of http requests
 grouped_ = query_cells.groupby('RGB_raster')

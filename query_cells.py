@@ -86,6 +86,7 @@ create_output_dirs(parameters)
 # bbox = gpd.GeoDataFrame(geometry=[parameters["AOI"]], crs='EPSG:31287')
 # bbox.to_file("output/bbox.shp")
 
+# moDify to remove MultiPolygons
 centroids, uni_raster = create_uniform_raster(polygon=parameters["AOI"],
                                               pixel_size=parameters["pixel_size"],
                                               width=parameters["image_width"],

@@ -81,7 +81,7 @@ def generate_raster_urls(url_base, row, channel):
 
 
 # Define the base path
-TU_PC = True
+TU_PC = False
 if TU_PC:
     BASE_PATH = r"U:\master\metadata"
 else:
