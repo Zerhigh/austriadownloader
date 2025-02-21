@@ -1,15 +1,15 @@
-# geoquery
+# austriadownloader
 
-[![Release](https://img.shields.io/github/v/release/Zerhigh/geoquery)](https://img.shields.io/github/v/release/Zerhigh/geoquery)
-[![Build status](https://img.shields.io/github/actions/workflow/status/Zerhigh/geoquery/main.yml?branch=main)](https://github.com/Zerhigh/geoquery/actions/workflows/main.yml?query=branch%3Amain)
-[![codecov](https://codecov.io/gh/Zerhigh/geoquery/branch/main/graph/badge.svg)](https://codecov.io/gh/Zerhigh/geoquery)
-[![Commit activity](https://img.shields.io/github/commit-activity/m/Zerhigh/geoquery)](https://img.shields.io/github/commit-activity/m/Zerhigh/geoquery)
-[![License](https://img.shields.io/github/license/Zerhigh/geoquery)](https://img.shields.io/github/license/Zerhigh/geoquery)
+[![Release](https://img.shields.io/github/v/release/Zerhigh/austriadownloader)](https://img.shields.io/github/v/release/Zerhigh/austriadownloader)
+[![Build status](https://img.shields.io/github/actions/workflow/status/Zerhigh/austriadownloader/main.yml?branch=main)](https://github.com/Zerhigh/austriadownloader/actions/workflows/main.yml?query=branch%3Amain)
+[![codecov](https://codecov.io/gh/Zerhigh/austriadownloader/branch/main/graph/badge.svg)](https://codecov.io/gh/Zerhigh/austriadownloader)
+[![Commit activity](https://img.shields.io/github/commit-activity/m/Zerhigh/austriadownloader)](https://img.shields.io/github/commit-activity/m/Zerhigh/austriadownloader)
+[![License](https://img.shields.io/github/license/Zerhigh/austriadownloader)](https://img.shields.io/github/license/Zerhigh/austriadownloader)
 
 This is a template repository for Python projects that use Poetry for their dependency management.
 
-- **Github repository**: <https://github.com/Zerhigh/geoquery/>
-- **Documentation** <https://Zerhigh.github.io/geoquery/>
+- **Github repository**: <https://github.com/Zerhigh/austriadownloader/>
+- **Documentation** <https://Zerhigh.github.io/austriadownloader/>
 
 ## Getting started with your project
 
@@ -19,7 +19,7 @@ First, create a repository on GitHub with the same name as this project, and the
 git init -b main
 git add .
 git commit -m "init commit"
-git remote add origin git@github.com:Zerhigh/geoquery.git
+git remote add origin git@github.com:Zerhigh/austriadownloader.git
 git push -u origin main
 ```
 
@@ -39,8 +39,8 @@ To enable the code coverage reports, see [here](https://fpgmaas.github.io/cookie
 ## Releasing a new version
 
 - Create an API Token on [PyPI](https://pypi.org/).
-- Add the API Token to your projects secrets with the name `PYPI_TOKEN` by visiting [this page](https://github.com/Zerhigh/geoquery/settings/secrets/actions/new).
-- Create a [new release](https://github.com/Zerhigh/geoquery/releases/new) on Github.
+- Add the API Token to your projects secrets with the name `PYPI_TOKEN` by visiting [this page](https://github.com/Zerhigh/austriadownloader/settings/secrets/actions/new).
+- Create a [new release](https://github.com/Zerhigh/austriadownloader/releases/new) on Github.
 - Create a new tag in the form `*.*.*`.
 - For more details, see [here](https://fpgmaas.github.io/cookiecutter-poetry/features/cicd/#how-to-trigger-a-release).
 

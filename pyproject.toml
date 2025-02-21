@@ -1,13 +1,13 @@
 [tool.poetry]
-name = "geoquery"
+name = "austriadownloader"
 version = "0.0.1"
 description = "This is a template repository for Python projects that use Poetry for their dependency management."
 authors = ["Samuel <samuel@uv.es>"]
-repository = "https://github.com/Zerhigh/geoquery"
-documentation = "https://Zerhigh.github.io/geoquery/"
+repository = "https://github.com/Zerhigh/austriadownloader"
+documentation = "https://Zerhigh.github.io/austriadownloader/"
 readme = "README.md"
 packages = [
-  {include = "geoquery"}
+  {include = "austriadownloader"}
 ]
 
 [tool.poetry.dependencies]
@@ -33,7 +33,7 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]
-files = ["geoquery"]
+files = ["austriadownloader"]
 disallow_untyped_defs = "True"
 disallow_any_unimported = "True"
 no_implicit_optional = "True"

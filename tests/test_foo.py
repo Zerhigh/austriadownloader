@@ -1,4 +1,4 @@
-from geoquery.foo import foo
+from austriadownloader.foo import foo
 
 
 def test_foo():

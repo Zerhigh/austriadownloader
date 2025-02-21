@@ -12,7 +12,7 @@ import geopandas as gpd
 import importlib.resources
 
 # Constants
-RESOURCE_PACKAGE: Final[str] = "geoquery.austria_data"
+RESOURCE_PACKAGE: Final[str] = "austriadownloader.austria_data"
 CADASTRAL_FILENAME: Final[str] = "ortho_cadastral_matched.shp"
 
 

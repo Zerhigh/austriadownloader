@@ -19,8 +19,8 @@ from pyproj import Transformer
 from shapely.geometry import Point
 from rasterio.windows import Window
 
-from geoquery.datarequest import DataRequest
-from geoquery.data import AUSTRIA_CADASTRAL
+from austriadownloader.datarequest import DataRequest
+from austriadownloader.data import AUSTRIA_CADASTRAL
 
 # Type aliases for improved readability
 Coordinates: TypeAlias = Tuple[float, float]
