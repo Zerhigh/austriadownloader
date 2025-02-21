@@ -57,3 +57,4 @@ def load_cadastral_data() -> gpd.GeoDataFrame:
 # Lazy-loaded cadastral data
 # This will only be loaded when first accessed
 AUSTRIA_CADASTRAL: Final[gpd.GeoDataFrame] = load_cadastral_data()
+#test name change
