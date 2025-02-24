@@ -1,8 +1,8 @@
+import os
 import pathlib
 import austriadownloader
 
 pathlib.Path("demo/").mkdir(parents=True, exist_ok=True)
-
 
 land_use_codes = {
     41: "Buildings",
@@ -32,27 +32,39 @@ land_use_codes = {
     54: "Alps"
 }
 
+places = {'krems': {'lat': 48.40086407732648, 'lon': 15.585103157374359},
+          'salzburg': {'lat': 47.8015341908452, 'lon': 13.031880967377068},
+          'kaernten': {'lat': 46.674413481011335, 'lon': 13.9611802108645},
+          'oberkohl': {'lat': 47.37133953187826, 'lon': 16.340480406413537},
+          'vienna': {'lat': 48.219523815790424, 'lon': 16.40504050915158},
+          }
+
 agg_codes = {'buildings': 41,
-             'water': (59, 60),
              'agricultural': (40, 48, 57),
              'forest': (55, 56, 58),
-             'railway': 92,
-             'roads': (42, 65, 95)}
+             'roads': 95}
 
-for names, codes in agg_codes.items():
-    print('--------------------------')
-    request = austriadownloader.DataRequest(
-        id=f"demo_salzburg_{names}",
-        lat=47.80599683324095, #47.200434,
-        lon=13.036799929282678, #14.673408,
-        pixel_size=1.6,
-        shape=(4, 1024, 1024),  # for RGB just use (3, 1024, 1024)
-        outpath="demo/paper_figures/",
-        mask_label=codes,  # Base: Buildings
-        create_gpkg=False,
-    )
 
-    austriadownloader.download(request, verbose=True)
+# Todos
+# add metadata generation script
+
+for place_name, pos in places.items():
+    if not os.path.exists(f'demo/paper_figures/demo_{place_name}'):
+        os.mkdir(f'demo/paper_figures/demo_{place_name}')
+    for names, codes in agg_codes.items():
+        print('--------------------------')
+        request = austriadownloader.DataRequest(
+            id=f"demo_{place_name}_{names}",
+            lat=pos['lat'],
+            lon=pos['lon'],
+            pixel_size=1.6,
+            shape=(4, 1024, 1024),  # for RGB just use (3, 1024, 1024)
+            outpath=f"demo/paper_figures/demo_{place_name}",
+            mask_label=codes,  # Base: Buildings
+            create_gpkg=False,
+        )
+
+        austriadownloader.download(request, verbose=True)
 
 
 # import pathlib

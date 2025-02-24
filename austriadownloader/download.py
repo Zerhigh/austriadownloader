@@ -271,33 +271,54 @@ def process_vector_data(
                     if feat["properties"].get("NS") in request.mask_label
         ]
 
-        gdf = gpd.GeoDataFrame(filtered_features, crs=src.crs)
+        # Objects ahve been found and will be transformed into raster
+        if len(filtered_features) > 0:
+            gdf = gpd.GeoDataFrame(filtered_features, crs=src.crs)
 
-        # Rasterize the geometries into the raster
-        with rio.open(request.outpath / f"input_{request.id}.tif") as img_src:
-            # convert geoemtries to raster specific crs
-            gdf.to_crs(crs=img_src.crs, inplace=True)
+            # Rasterize the geometries into the raster
+            with rio.open(request.outpath / f"input_{request.id}.tif") as img_src:
+                # convert geoemtries to raster specific crs
+                gdf.to_crs(crs=img_src.crs, inplace=True)
 
-            # if requested provide transformed vector file
-            if request.create_gpkg:
-                gdf.to_file(request.outpath / f"target_{request.id}.gpkg", driver='GPKG', layer='NFL')
-            shapes = [(geom, 1) for geom in gdf.geometry]  # Assign value 1 to features
-            binary_raster = rasterize(shapes, out_shape=request.shape[1:], transform=img_src.transform,
-                                      fill=0)
+                # if requested provide transformed vector file
+                if request.create_gpkg:
+                    gdf.to_file(request.outpath / f"target_{request.id}.gpkg", driver='GPKG', layer='NFL')
+                shapes = [(geom, 1) for geom in gdf.geometry]  # Assign value 1 to features
+                binary_raster = rasterize(shapes, out_shape=request.shape[1:], transform=img_src.transform,
+                                          fill=0)
 
-            # Save the rasterized binary image
-            with rio.open(
-                    fp=request.outpath / f"target_{request.id}.tif",
-                    mode="w+",
-                    driver="GTiff",
-                    height=request.shape[1],
-                    width=request.shape[1],
-                    count=1,
-                    dtype=np.uint8,
-                    crs=img_src.crs,
-                    transform=img_src.transform
-            ) as dst:
-                dst.write(binary_raster, 1)
+                # Save the rasterized binary image
+                with rio.open(
+                        fp=request.outpath / f"target_{request.id}.tif",
+                        mode="w+",
+                        driver="GTiff",
+                        height=request.shape[1],
+                        width=request.shape[1],
+                        count=1,
+                        dtype=np.uint8,
+                        crs=img_src.crs,
+                        transform=img_src.transform
+                ) as dst:
+                    dst.write(binary_raster, 1)
+        # write empty image
+        else:
+            print(f'No results for: lat: {request.lat} // lon: {request.lon}')
+            with rio.open(request.outpath / f"input_{request.id}.tif") as img_src:
+                binary_raster = np.zeros((request.shape[1], request.shape[1]), dtype=np.uint8)
+
+                # Save the rasterized binary image
+                with rio.open(
+                        fp=request.outpath / f"target_{request.id}.tif",
+                        mode="w+",
+                        driver="GTiff",
+                        height=request.shape[1],
+                        width=request.shape[1],
+                        count=1,
+                        dtype=np.uint8,
+                        crs=img_src.crs,
+                        transform=img_src.transform
+                ) as dst:
+                    dst.write(binary_raster, 1)
     return
 
 
