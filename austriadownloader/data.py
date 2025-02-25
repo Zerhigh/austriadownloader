@@ -13,7 +13,7 @@ import importlib.resources
 
 # Constants
 RESOURCE_PACKAGE: Final[str] = "austriadownloader.austria_data"
-CADASTRAL_FILENAME: Final[str] = "ortho_cadastral_matched.shp"
+CADASTRAL_FILENAME: Final[str] = "matched_metadata.gpkg"
 
 
 def load_cadastral_data() -> gpd.GeoDataFrame:
@@ -34,14 +34,14 @@ def load_cadastral_data() -> gpd.GeoDataFrame:
     """
     try:
         with importlib.resources.path(RESOURCE_PACKAGE, CADASTRAL_FILENAME) as resource_path:
-            shapefile_path = Path(resource_path).resolve()
+            geopackage_path = Path(resource_path).resolve()
             
-            if not shapefile_path.exists():
+            if not geopackage_path.exists():
                 raise FileNotFoundError(
-                    f"Cadastral shapefile not found at: {shapefile_path}"
+                    f"Cadastral geopackage not found at: {geopackage_path}"
                 )
             
-            cadastral_data = gpd.read_file(shapefile_path)
+            cadastral_data = gpd.read_file(geopackage_path)
             
             if cadastral_data.empty:
                 raise ValueError("Loaded cadastral data is empty")
@@ -57,4 +57,3 @@ def load_cadastral_data() -> gpd.GeoDataFrame:
 # Lazy-loaded cadastral data
 # This will only be loaded when first accessed
 AUSTRIA_CADASTRAL: Final[gpd.GeoDataFrame] = load_cadastral_data()
-#test name change - again
