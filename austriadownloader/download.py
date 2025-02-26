@@ -388,7 +388,8 @@ def process_rgbn_raster(
             data_total = np.concatenate([data_rgb, data_nir], axis=0)
 
             # If the data is not already of shape of the blocksize, pad it
-            data_total = pad_tensor(data_total, href=profile["blockxsize"], wref=profile["blockysize"])
+            #data_total = pad_tensor(data_total, href=profile["blockxsize"], wref=profile["blockysize"])
+            data_total = pad_tensor(data_total, href=profile["height"], wref=profile["width"])
 
             profile.update({'count': 4})
             save_raster_data(
