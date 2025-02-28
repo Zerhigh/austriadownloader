@@ -100,32 +100,34 @@ def download(request: DataRequest, verbose: bool) -> Path:
         ValueError: If the request contains invalid parameters.
         IOError: If there are issues with file operations.
     """
-    #with AustriaServerConfig().get_env("default"):
+    # using environment options is disabled for now
+    # with AustriaServerConfig().get_env("default"):
     try:
         state = DownloadState(id=request.id)
+        if verbose:
+            print(f'Tile: {request.id}')
         # Download appropriate raster data based on channel count
         if request.shape[0] == 3:
             if verbose:
-                print("Downloading RGB raster data.")
+                print("    Downloading RGB raster data.")
             download_rasterdata_rgb(request, state)
         elif request.shape[0] == 4:
             if verbose:
-                print("Downloading RGB and NIR raster data.")
+                print("    Downloading RGB and NIR raster data.")
             download_rasterdata_rgbn(request, state)
         else:
-            raise ValueError(f"Invalid channel count: {request.shape[0]}. Must be 3 (RGB) or 4 (RGB and NIR).")
+            raise ValueError(f"    Invalid channel count: {request.shape[0]}. Must be 3 (RGB) or 4 (RGB and NIR).")
 
         # Process vector data
         if state.check_raster():
             if verbose:
-                print(f"Downloading vector cadastral data: "
-                    f"\n    Code(s): {request.mask_label}")
+                print(f"    Downloading vector cadastral data: Code(s): {request.mask_label}")
             download_vector(request, state)
             if verbose:
-                print(f"Finished downloading and processing data to: {request.outpath}")
+                print(f"    Finished downloading and processing data to: {request.outpath}\*_{request.id}.tif")
         else:
             if verbose:
-                print(f'Did not download raster and vector data as no raster was accessed. Likely due to NoData values and {request.nodata_mode} set as "remove"')
+                print(f'    Did not download raster and vector data as no raster was accessed. Likely due to NoData values and {request.nodata_mode} set as "remove"')
 
         return request.outpath
 
