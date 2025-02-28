@@ -23,6 +23,7 @@ from shapely.geometry import Point, shape
 
 from austriadownloader.data import AUSTRIA_CADASTRAL
 from austriadownloader.datarequest import DataRequest
+from austriadownloader.downloadstate import DownloadState
 from austriadownloader.env_options import AustriaServerConfig
 
 # Type aliases for improved readability
@@ -49,38 +50,6 @@ VALID_OVERVIEWS: Final[Dict[float, OverviewLevel]] = {
 WGS84: Final[str] = "EPSG:4326"
 AUSTRIA_CRS: Final[str] = "EPSG:31287"
 #BUILDING_CLASS: Final[int] = 92  # Building class code
-
-
-class DownloadState:
-    # State Manager to keep track of successfull donwloads
-    def __init__(self, id: str):
-        self.id: str = id
-        self.raster_download_success: bool = False
-        self.vector_download_success: bool = False
-
-    def set_raster_failed(self):
-        """Mark raster download as failed."""
-        self.raster_download_success = False
-
-    def set_raster_successful(self):
-        """Mark raster download as failed."""
-        self.raster_download_success = True
-
-    def check_raster(self):
-        """Check if raster download was successful."""
-        return self.raster_download_success
-
-    def set_vector_failed(self):
-        """Mark raster download as failed."""
-        self.vector_download_success = False
-
-    def set_vector_successful(self):
-        """Mark raster download as failed."""
-        self.vector_download_success = True
-
-    def check_vector(self):
-        """Check if raster download was successful."""
-        return self.vector_download_success
 
 
 def pad_tensor(data: np.ndarray, href: int = 512, wref: int = 512, nodata_method: str = 'flag') -> Optional[np.ndarray]:
