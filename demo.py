@@ -42,9 +42,11 @@ dem = pd.DataFrame([{'id': 'id_01', 'lat': 48.40086407732648, 'lon': 15.58510315
                     {'id': 'id_05', 'lat': 48.219523815790424, 'lon': 16.40504050915158},
                     {'id': 'id_06', 'lat': 48.10538361840102, 'lon': 16.22915864360271}])
 
+dem = pd.read_csv('stratified_sample_austria.csv')
+
 code = 41
 
-for i, row in dem.iterrows():
+for i, row in tqdm.tqdm(dem.iterrows()):
     request = austriadownloader.DataRequest(
         id=row.id,
         lat=row.lat,
@@ -57,4 +59,4 @@ for i, row in dem.iterrows():
         nodata_mode='flag', # or 'remove',
     )
 
-    austriadownloader.download(request, verbose=True)
+    austriadownloader.download(request, verbose=False)

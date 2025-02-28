@@ -39,7 +39,7 @@ class DataRequest(BaseModel):
         ValueError: If any of the parameters fail validation.
     """
 
-    id: str
+    id: str | int
     lon: float
     lat: float
     pixel_size: float
@@ -49,6 +49,28 @@ class DataRequest(BaseModel):
     create_gpkg: bool = False
     nodata_mode: str = 'flag'
     nodata_value: int = 0
+
+    @field_validator("id")
+    @classmethod
+    def validate_id(cls, value: str | int) -> str:
+        """
+        Validate the id.
+
+        Args:
+            value: The id as a string or integer.
+
+        Returns:
+            str: Validated id.
+
+        Raises:
+            ValueError: If the value is not 'str' or 'int'.
+        """
+        if isinstance(value, str):
+            return value
+        elif isinstance(value, int):
+            return str(value)
+        else:
+            raise ValueError("Id must be string or int")
 
     @field_validator("nodata_mode")
     @classmethod
