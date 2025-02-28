@@ -39,7 +39,7 @@ class DataRequest(BaseModel):
         ValueError: If any of the parameters fail validation.
     """
 
-    id: str
+    id: str | int
     lon: float
     lat: float
     pixel_size: float
@@ -47,6 +47,49 @@ class DataRequest(BaseModel):
     outpath: Path | str
     mask_label: list[int] | tuple[int] | int
     create_gpkg: bool = False
+    nodata_mode: str = 'flag'
+    nodata_value: int = 0
+
+    @field_validator("id")
+    @classmethod
+    def validate_id(cls, value: str | int) -> str:
+        """
+        Validate the id.
+
+        Args:
+            value: The id as a string or integer.
+
+        Returns:
+            str: Validated id.
+
+        Raises:
+            ValueError: If the value is not 'str' or 'int'.
+        """
+        if isinstance(value, str):
+            return value
+        elif isinstance(value, int):
+            return str(value)
+        else:
+            raise ValueError("Id must be string or int")
+
+    @field_validator("nodata_mode")
+    @classmethod
+    def validate_nodata_mode(cls, value: str) -> str:
+        """
+        Validate the operation mode.
+
+        Args:
+            value: The operation mode as a string.
+
+        Returns:
+            str: Validated operation mode.
+
+        Raises:
+            ValueError: If the value is not 'flag' or 'remove'.
+        """
+        if value not in {"flag", "remove"}:
+            raise ValueError("Operation mode must be either 'flag' or 'remove'")
+        return value
 
     @field_validator("shape")
     @classmethod

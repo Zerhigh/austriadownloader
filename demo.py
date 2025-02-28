@@ -1,8 +1,11 @@
-import os
 import pathlib
+import pandas as pd
+import tqdm
+
 import austriadownloader
 
 pathlib.Path("demo/").mkdir(parents=True, exist_ok=True)
+pathlib.Path("demo/output/").mkdir(parents=True, exist_ok=True)
 
 land_use_codes = {
     41: "Buildings",
@@ -32,103 +35,28 @@ land_use_codes = {
     54: "Alps"
 }
 
+dem = pd.DataFrame([{'id': 'id_01', 'lat': 48.40086407732648, 'lon': 15.585103157374359},
+                    {'id': 'id_02', 'lat': 47.8015341908452, 'lon': 13.031880967377068},
+                    {'id': 'id_03', 'lat': 46.674413481011335, 'lon': 13.9611802108645},
+                    {'id': 'id_04', 'lat': 47.37133953187826, 'lon': 16.340480406413537},
+                    {'id': 'id_05', 'lat': 48.219523815790424, 'lon': 16.40504050915158},
+                    {'id': 'id_06', 'lat': 48.10538361840102, 'lon': 16.22915864360271}])
 
-def all_places():
-    places = {'krems': {'lat': 48.40086407732648, 'lon': 15.585103157374359},
-              'salzburg': {'lat': 47.8015341908452, 'lon': 13.031880967377068},
-              'kaernten': {'lat': 46.674413481011335, 'lon': 13.9611802108645},
-              'oberkohl': {'lat': 47.37133953187826, 'lon': 16.340480406413537},
-              'vienna': {'lat': 48.219523815790424, 'lon': 16.40504050915158},
-              }
+dem = pd.read_csv('stratified_sample_austria.csv')
 
-    agg_codes = {'buildings': 41,
-                 'agricultural': (40, 48, 57),
-                 'forest': (55, 56, 58),
-                 'roads': 95}
+code = 41
 
-    # places = {'test': { 'lat': 48.10538361840102, 'lon': 16.22915864360271}}
-    # agg_codes = {'forest': (55, 56, 58)}
+for i, row in tqdm.tqdm(dem.iterrows()):
+    request = austriadownloader.DataRequest(
+        id=row.id,
+        lat=row.lat,
+        lon=row.lon,
+        pixel_size=1.6,
+        shape=(4, 1024, 1024),  # for RGB just use (3, 1024, 1024)
+        outpath=f"demo/output/",
+        mask_label=code,  # Base: Buildings
+        create_gpkg=False,
+        nodata_mode='flag', # or 'remove',
+    )
 
-    for place_name, pos in places.items():
-        if not os.path.exists(f'demo/paper_figures/demo_{place_name}'):
-            os.mkdir(f'demo/paper_figures/demo_{place_name}')
-        for names, codes in agg_codes.items():
-            print('--------------------------')
-            request = austriadownloader.DataRequest(
-                id=f"demo_{place_name}_{names}",
-                lat=pos['lat'],
-                lon=pos['lon'],
-                pixel_size=1.6,
-                shape=(4, 1024, 1024),  # for RGB just use (3, 1024, 1024)
-                outpath=f"demo/paper_figures/demo_{place_name}",
-                mask_label=codes,  # Base: Buildings
-                create_gpkg=False,
-            )
-
-            austriadownloader.download(request, verbose=True)
-
-all_places()
-
-
-def unique_places():
-    unique_places = {#'railway': {'lat': 48.13958600612893, 'lon': 16.43445790315343, 'code': 92},#48.13958600612893, 16.43445790315343
-                     'mine_wrong': {'lat': 48.10538361840102, 'lon': 16.22915864360271, 'code': 84},#48.10538361840102, 16.22915864360271
-                     #'glaciers': {'lat': 47.46821056925262, 'lon': 13.627308865465027, 'code': 88}, #47.46821056925262, 13.627308865465027
-                     }
-
-    for place_name, attr in unique_places.items():
-        if not os.path.exists(f'demo/paper_figures/demo_{place_name}'):
-            os.mkdir(f'demo/paper_figures/demo_{place_name}')
-        print('--------------------------')
-        request = austriadownloader.DataRequest(
-            id=f"demo_{place_name}",
-            lat=attr['lat'],
-            lon=attr['lon'],
-            pixel_size=1.6,
-            shape=(3, 1024, 1024),  # for RGB just use (3, 1024, 1024)
-            outpath=f"demo/paper_figures/demo_{place_name}",
-            mask_label=attr['code'],  # Base: Buildings
-            create_gpkg=False,
-        )
-
-        austriadownloader.download(request, verbose=True)
-
-
-#unique_places()
-
-# import pathlib
-# from austriadownloader.datarequest import ConfigParameters
-# pathlib.Path("demo/").mkdir(parents=True, exist_ok=True)
-#
-# # Example usage
-# parameters = ConfigParameters(
-#     pixel_size=2.5,
-#     image_width=512,
-#     lat=xx,
-#     lon=xxx,
-#     outpath="demo/",  # Ensure this exists
-#     multispectral=False
-# )
-#
-# parameters.download()
-#
-# parameters.aoi
-#
-#
-# import shapely.geometry
-# import geopandas as gpd
-#
-# daa = gpd.GeoDataFrame(geometry=[shapely.geometry.box(*[516143, 470000, 536665, 496558])], crs="EPSG:31287")
-# daa.to_file("demo/aoi.geojson", driver="GeoJSON")
-
-#
-#
-# import rasterio as rio
-# ff = "https://data.bev.gv.at/download/DOP//20221231/2022260_Mosaik_RGB.tif"
-#
-# with rio.open(ff) as src:
-#     print(src.profile)
-#
-#
-#
-#
+    austriadownloader.download(request, verbose=False)

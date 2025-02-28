@@ -9,7 +9,7 @@ The module supports various pixel sizes through overview levels and ensures prop
 coordinate transformations between different coordinate reference systems (CRS).
 """
 from pathlib import Path
-from typing import Final, TypeAlias, Literal, Dict, Tuple
+from typing import Final, TypeAlias, Literal, Dict, Tuple, Optional
 
 import fiona
 import geopandas as gpd
@@ -23,6 +23,8 @@ from shapely.geometry import Point, shape
 
 from austriadownloader.data import AUSTRIA_CADASTRAL
 from austriadownloader.datarequest import DataRequest
+from austriadownloader.downloadstate import DownloadState
+from austriadownloader.env_options import AustriaServerConfig
 
 # Type aliases for improved readability
 Coordinates: TypeAlias = Tuple[float, float]
@@ -50,6 +52,39 @@ AUSTRIA_CRS: Final[str] = "EPSG:31287"
 #BUILDING_CLASS: Final[int] = 92  # Building class code
 
 
+def pad_tensor(data: np.ndarray, href: int = 512, wref: int = 512, nodata_method: str = 'flag') -> Optional[np.ndarray]:
+    """
+    Pads a (3, H, W) tensor to (3, href, wref) by filling with zeros.
+    
+    Args:
+        :param data: Input tensor of shape (3, H, W).
+        :param nodata_method: Either 'flag' or 'remove'
+        :param href: Padding image size.
+        :param wref: Padding image size.
+    
+    Returns:
+        np.ndarray: Zero-padded tensor of shape (3, href, wref).
+    """
+    c, h, w = data.shape
+    
+    if h == href and w == wref:
+        return data  # No changes needed
+
+    # check for nodata_method
+    if nodata_method == 'flag':
+        print(f'Queryied window contains NoData values, set to: 0')
+
+        # Create a zero-filled array of the target shape
+        padded = np.zeros((c, href, wref), dtype=data.dtype)
+
+        # Copy the original data into the top-left corner of the padded array
+        padded[:, :h, :w] = data
+
+        return padded
+    elif nodata_method == 'remove':
+        return None
+
+
 def download(request: DataRequest, verbose: bool) -> Path:
     """
     Download and process both raster and vector data for the requested area.
@@ -65,27 +100,34 @@ def download(request: DataRequest, verbose: bool) -> Path:
         ValueError: If the request contains invalid parameters.
         IOError: If there are issues with file operations.
     """
+    # using environment options is disabled for now
+    # with AustriaServerConfig().get_env("default"):
     try:
+        state = DownloadState(id=request.id)
+        if verbose:
+            print(f'Tile: {request.id}')
         # Download appropriate raster data based on channel count
         if request.shape[0] == 3:
             if verbose:
-                print("Downloading RGB raster data.")
-            download_rasterdata_rgb(request)
+                print("    Downloading RGB raster data.")
+            download_rasterdata_rgb(request, state)
         elif request.shape[0] == 4:
             if verbose:
-                print("Downloading RGB and NIR raster data.")
-            download_rasterdata_rgbn(request)
+                print("    Downloading RGB and NIR raster data.")
+            download_rasterdata_rgbn(request, state)
         else:
-            raise ValueError(f"Invalid channel count: {request.shape[0]}. Must be 3 (RGB) or 4 (RGB and NIR).")
+            raise ValueError(f"    Invalid channel count: {request.shape[0]}. Must be 3 (RGB) or 4 (RGB and NIR).")
 
         # Process vector data
-        if verbose:
-            print(f"Downloading vector cadastral data: "
-                  f"\n    Code(s): {request.mask_label}")
-        download_vector(request)
-
-        if verbose:
-            print(f"Finished downloading and processing data to: {request.outpath}")
+        if state.check_raster():
+            if verbose:
+                print(f"    Downloading vector cadastral data: Code(s): {request.mask_label}")
+            download_vector(request, state)
+            if verbose:
+                print(f"    Finished downloading and processing data to: {request.outpath}\*_{request.id}.tif")
+        else:
+            if verbose:
+                print(f'    Did not download raster and vector data as no raster was accessed. Likely due to NoData values and {request.nodata_mode} set as "remove"')
 
         return request.outpath
 
@@ -93,7 +135,7 @@ def download(request: DataRequest, verbose: bool) -> Path:
         raise IOError(f"Failed to process data request: {str(e)}") from e
 
 
-def download_vector(request: DataRequest) -> None:
+def download_vector(request: DataRequest, state: DownloadState) -> None:
     """
     Download and process vector data for the specified location.
 
@@ -135,13 +177,15 @@ def download_vector(request: DataRequest) -> None:
             request=request
         )
 
-        return #output_path
+        state.set_vector_successful()
+        return
 
     except Exception as e:
+        state.set_vector_failed()
         raise IOError(f"Vector data processing failed: {str(e)}") from e
 
 
-def download_rasterdata_rgb(request: DataRequest) -> pd.Series:
+def download_rasterdata_rgb(request: DataRequest, state: DownloadState) -> pd.Series:
     """
     Download and process RGB raster data.
 
@@ -171,7 +215,8 @@ def download_rasterdata_rgb(request: DataRequest) -> pd.Series:
             raster_path=raster_data["RGB_raster"],
             request=request,
             point=(request.lon, request.lat),
-            overview_level=overview_level
+            overview_level=overview_level,
+            state=state
         )
 
         return raster_data
@@ -180,7 +225,7 @@ def download_rasterdata_rgb(request: DataRequest) -> pd.Series:
         raise IOError(f"RGB raster processing failed: {str(e)}") from e
 
 
-def download_rasterdata_rgbn(request: DataRequest) -> pd.Series:
+def download_rasterdata_rgbn(request: DataRequest, state: DownloadState) -> pd.Series:
     """
     Download and process RGBN (RGB + Near Infrared) raster data.
 
@@ -211,7 +256,8 @@ def download_rasterdata_rgbn(request: DataRequest) -> pd.Series:
             nir_path=raster_data["NIR_raster"],
             request=request,
             point=(request.lon, request.lat),
-            overview_level=overview_level
+            overview_level=overview_level,
+            state=state
         )
 
         return raster_data
@@ -326,20 +372,30 @@ def process_rgb_raster(
         raster_path: str,
         request: DataRequest,
         point: Coordinates,
-        overview_level: int
+        overview_level: int,
+        state: DownloadState
 ) -> None:
     """Process and save RGB raster data."""
-    with rio.open(raster_path, overview_level=overview_level) as src:
+    with rio.open(raster_path, overview_level=overview_level) as src:        
         window, profile = prepare_raster_window(src, point, request)
-        data = src.read(window=window)
-
-        save_raster_data(
-            data=data,
-            profile=profile,
-            request=request,
-            window=window,
-            transform=src.transform
-        )
+        data = src.read(window=window)        
+        
+        # If the data is not already of shape of the blocksize, pad it
+        data = pad_tensor(data, href=profile["height"], wref=profile["width"], nodata_method=request.nodata_mode)
+        if data is None:
+            # creation option for nodata is on remove
+            state.set_raster_failed()
+            print(f'Skipping raster {request.outpath} as NoData values were contained and nodata_mode={request.nodata_mode}')
+        else:
+            state.set_raster_successful()
+            profile.update({'nodata': request.nodata_value})
+            save_raster_data(
+                data=data,
+                profile=profile,
+                request=request,
+                window=window,
+                transform=src.transform
+            )
 
 
 def process_rgbn_raster(
@@ -347,7 +403,8 @@ def process_rgbn_raster(
         nir_path: str,
         request: DataRequest,
         point: Coordinates,
-        overview_level: int
+        overview_level: int,
+        state: DownloadState
 ) -> None:
     """Process and save RGBN raster data."""
     with rio.open(rgb_path, overview_level=overview_level) as src_rgb:
@@ -358,14 +415,23 @@ def process_rgbn_raster(
             data_nir = src_nir.read(window=window)
             data_total = np.concatenate([data_rgb, data_nir], axis=0)
 
-            profile.update({'count': 4})
-            save_raster_data(
-                data=data_total,
-                profile=profile,
-                request=request,
-                window=window,
-                transform=src_rgb.transform
-            )
+            # If the data is not already of shape of the blocksize, pad it
+            #data_total = pad_tensor(data_total, href=profile["blockxsize"], wref=profile["blockysize"])
+            data_total = pad_tensor(data_total, href=profile["height"], wref=profile["width"], nodata_method=request.nodata_mode)
+            if data_total is None:
+                # creation option for nodata is on remove
+                state.set_raster_failed()
+                print(f'Removed raster {request.outpath} as NoData values were contained and nodata_mode={request.nodata_mode}')
+            else:
+                state.set_raster_successful()
+                profile.update({'count': 4, 'nodata': request.nodata_value})
+                save_raster_data(
+                    data=data_total,
+                    profile=profile,
+                    request=request,
+                    window=window,
+                    transform=src_rgb.transform
+                )
 
 
 def prepare_raster_window(
@@ -409,19 +475,14 @@ def save_raster_data(
 ) -> None:
     """Save raster data to disk."""
     profile.update({
-        'transform': rio.windows.transform(window, transform)
+        'transform': rio.windows.transform(window, transform),
+        'tiled': True,
+        'nodata': 0,
+        'blockxsize': 256,
+        'blockysize': 256
     })
 
     output_path = request.outpath / f"input_{request.id}.tif"
     with rio.open(output_path, "w", **profile) as dst:
         dst.write(data)
 
-
-def rasterize_vector(request: DataRequest) -> None:
-    """
-    Rasterize vector data based on the request parameters.
-    
-    This is a placeholder for the rasterization implementation.
-    """
-    # Implementation done in process_vector_data
-    pass
