@@ -43,6 +43,7 @@ class DataRequest(BaseModel):
     lon: float
     lat: float
     pixel_size: float
+    resample_size: float | None = None
     shape: ImageShape
     outpath: Path | str
     mask_label: list[int] | tuple[int] | int

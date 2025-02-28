@@ -42,7 +42,7 @@ dem = pd.DataFrame([{'id': 'id_01', 'lat': 48.40086407732648, 'lon': 15.58510315
                     {'id': 'id_05', 'lat': 48.219523815790424, 'lon': 16.40504050915158},
                     {'id': 'id_06', 'lat': 48.10538361840102, 'lon': 16.22915864360271}])
 
-dem = pd.read_csv('stratified_sample_austria.csv')
+#dem = pd.read_csv('stratified_sample_austria.csv')
 
 code = 41
 
@@ -52,7 +52,8 @@ for i, row in tqdm.tqdm(dem.iterrows()):
         lat=row.lat,
         lon=row.lon,
         pixel_size=1.6,
-        shape=(4, 1024, 1024),  # for RGB just use (3, 1024, 1024)
+        resample_size=2.5,
+        shape=(4, 512, 512),  # for RGB just use (3, 1024, 1024)
         outpath=f"demo/output/",
         mask_label=code,  # Base: Buildings
         create_gpkg=False,
@@ -60,3 +61,5 @@ for i, row in tqdm.tqdm(dem.iterrows()):
     )
 
     austriadownloader.download(request, verbose=False)
+
+    break

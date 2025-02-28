@@ -19,7 +19,10 @@ import rasterio as rio
 from pyproj import Transformer
 from rasterio.features import rasterize
 from rasterio.windows import Window
+from rasterio.enums import Resampling
 from shapely.geometry import Point, shape
+
+from scipy.ndimage import zoom
 
 from austriadownloader.data import AUSTRIA_CADASTRAL
 from austriadownloader.datarequest import DataRequest
@@ -50,39 +53,6 @@ VALID_OVERVIEWS: Final[Dict[float, OverviewLevel]] = {
 WGS84: Final[str] = "EPSG:4326"
 AUSTRIA_CRS: Final[str] = "EPSG:31287"
 #BUILDING_CLASS: Final[int] = 92  # Building class code
-
-
-def pad_tensor(data: np.ndarray, href: int = 512, wref: int = 512, nodata_method: str = 'flag') -> Optional[np.ndarray]:
-    """
-    Pads a (3, H, W) tensor to (3, href, wref) by filling with zeros.
-    
-    Args:
-        :param data: Input tensor of shape (3, H, W).
-        :param nodata_method: Either 'flag' or 'remove'
-        :param href: Padding image size.
-        :param wref: Padding image size.
-    
-    Returns:
-        np.ndarray: Zero-padded tensor of shape (3, href, wref).
-    """
-    c, h, w = data.shape
-    
-    if h == href and w == wref:
-        return data  # No changes needed
-
-    # check for nodata_method
-    if nodata_method == 'flag':
-        print(f'Queryied window contains NoData values, set to: 0')
-
-        # Create a zero-filled array of the target shape
-        padded = np.zeros((c, href, wref), dtype=data.dtype)
-
-        # Copy the original data into the top-left corner of the padded array
-        padded[:, :h, :w] = data
-
-        return padded
-    elif nodata_method == 'remove':
-        return None
 
 
 def download(request: DataRequest, verbose: bool) -> Path:
@@ -416,8 +386,16 @@ def process_rgbn_raster(
             data_total = np.concatenate([data_rgb, data_nir], axis=0)
 
             # If the data is not already of shape of the blocksize, pad it
-            #data_total = pad_tensor(data_total, href=profile["blockxsize"], wref=profile["blockysize"])
             data_total = pad_tensor(data_total, href=profile["height"], wref=profile["width"], nodata_method=request.nodata_mode)
+            # resample and resize
+            trafo = src_rgb.transform
+            if request.resample_size is not None:
+                resampled_arr = np.array([zoom(data_total[channel], (512 / 800, 512 / 800), order=3) for channel in range(data_total.shape[0])])
+                data_total = resampled_arr
+
+
+                return
+
             if data_total is None:
                 # creation option for nodata is on remove
                 state.set_raster_failed()
@@ -430,7 +408,7 @@ def process_rgbn_raster(
                     profile=profile,
                     request=request,
                     window=window,
-                    transform=src_rgb.transform
+                    transform=trafo
                 )
 
 
@@ -446,18 +424,32 @@ def prepare_raster_window(
         to_crs=src.crs
     )
 
+    # if request.resample_size is not None:
     y, x = src.index(*point_raster)
-    window = Window(
-        x - request.shape[2] // 2,
-        y - request.shape[1] // 2,
-        request.shape[2],
-        request.shape[1]
-    )
+
+    h, w = request.shape[1:]
+    if request.resample_size is not None:
+        scaling_factor = request.resample_size / request.pixel_size
+        adjusted_window_size = int(request.shape[1] * scaling_factor)
+        window = Window(
+            x - adjusted_window_size // 2,  # Start column (x)
+            y - adjusted_window_size // 2,  # Start row (y)
+            adjusted_window_size,  # Window width (adjusted for resolution)
+            adjusted_window_size  # Window height (adjusted for resolution)
+        )
+        h, w = adjusted_window_size, adjusted_window_size
+    else:
+        window = Window(
+            x - request.shape[2] // 2,
+            y - request.shape[1] // 2,
+            request.shape[2],
+            request.shape[1]
+        )
 
     profile = src.profile.copy()
     profile.update({
-        'height': request.shape[1],
-        'width': request.shape[2],
+        'height': h,
+        'width': w,
         'compress': 'DEFLATE',
         'driver': 'GTiff',
         'photometric': None
@@ -485,4 +477,37 @@ def save_raster_data(
     output_path = request.outpath / f"input_{request.id}.tif"
     with rio.open(output_path, "w", **profile) as dst:
         dst.write(data)
+
+
+def pad_tensor(data: np.ndarray, href: int = 512, wref: int = 512, nodata_method: str = 'flag') -> Optional[np.ndarray]:
+    """
+    Pads a (3, H, W) tensor to (3, href, wref) by filling with zeros.
+
+    Args:
+        :param data: Input tensor of shape (3, H, W).
+        :param nodata_method: Either 'flag' or 'remove'
+        :param href: Padding image size.
+        :param wref: Padding image size.
+
+    Returns:
+        np.ndarray: Zero-padded tensor of shape (3, href, wref).
+    """
+    c, h, w = data.shape
+
+    if h == href and w == wref:
+        return data  # No changes needed
+
+    # check for nodata_method
+    if nodata_method == 'flag':
+        print(f'Queryied window contains NoData values, set to: 0')
+
+        # Create a zero-filled array of the target shape
+        padded = np.zeros((c, href, wref), dtype=data.dtype)
+
+        # Copy the original data into the top-left corner of the padded array
+        padded[:, :h, :w] = data
+
+        return padded
+    elif nodata_method == 'remove':
+        return None
 
