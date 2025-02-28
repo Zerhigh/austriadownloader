@@ -47,6 +47,27 @@ class DataRequest(BaseModel):
     outpath: Path | str
     mask_label: list[int] | tuple[int] | int
     create_gpkg: bool = False
+    nodata_mode: str = 'flag'
+    nodata_value: int = 0
+
+    @field_validator("nodata_mode")
+    @classmethod
+    def validate_nodata_mode(cls, value: str) -> str:
+        """
+        Validate the operation mode.
+
+        Args:
+            value: The operation mode as a string.
+
+        Returns:
+            str: Validated operation mode.
+
+        Raises:
+            ValueError: If the value is not 'flag' or 'remove'.
+        """
+        if value not in {"flag", "remove"}:
+            raise ValueError("Operation mode must be either 'flag' or 'remove'")
+        return value
 
     @field_validator("shape")
     @classmethod

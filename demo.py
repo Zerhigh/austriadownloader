@@ -44,7 +44,8 @@ agg_codes = {'buildings': 41,
              'forest': (55, 56, 58),
              'roads': 95}
 
-
+places = {'test': { 'lat': 48.10538361840102, 'lon': 16.22915864360271}}
+agg_codes = {'forest': (55, 56, 58)}
 # Todos
 # add metadata generation script
 
@@ -58,10 +59,11 @@ for place_name, pos in places.items():
             lat=pos['lat'],
             lon=pos['lon'],
             pixel_size=1.6,
-            shape=(4, 1024, 1024),  # for RGB just use (3, 1024, 1024)
+            shape=(3, 1024, 1024),  # for RGB just use (3, 1024, 1024)
             outpath=f"demo/paper_figures/demo_{place_name}",
             mask_label=codes,  # Base: Buildings
             create_gpkg=False,
+            nodata_mode='remove', # or 'remove',
         )
 
         austriadownloader.download(request, verbose=True)
