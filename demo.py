@@ -46,6 +46,9 @@ def all_places():
                  'forest': (55, 56, 58),
                  'roads': 95}
 
+    # places = {'test': { 'lat': 48.10538361840102, 'lon': 16.22915864360271}}
+    # agg_codes = {'forest': (55, 56, 58)}
+
     for place_name, pos in places.items():
         if not os.path.exists(f'demo/paper_figures/demo_{place_name}'):
             os.mkdir(f'demo/paper_figures/demo_{place_name}')
@@ -63,6 +66,8 @@ def all_places():
             )
 
             austriadownloader.download(request, verbose=True)
+
+all_places()
 
 
 def unique_places():
@@ -89,7 +94,7 @@ def unique_places():
         austriadownloader.download(request, verbose=True)
 
 
-unique_places()
+#unique_places()
 
 # import pathlib
 # from austriadownloader.datarequest import ConfigParameters
