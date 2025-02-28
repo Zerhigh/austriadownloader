@@ -35,6 +35,15 @@ Other input parameters are:
 | `nodata_mode` | `str` (default: `'flag'`)     | Mode for handling no-data values (`'flag'` or `'remove'`).                               |
 | `nodata_value` | `int` (default: `0`)          | Value assigned to no-data pixels.                                                        |
 
+## Results
+
+General overview of different classes:
+![Sample Image](results/example_results.png)
+
+Unique selection of classes:
+![Sample Image](results/example_results2.png)
+
+
 ## Available Classes
 
 To select your class labels, select one or more from the following list:
@@ -66,11 +75,6 @@ To select your class labels, select one or more from the following list:
 |                    | 96       | Recreational area                             |
 | Gardens            | 52       | Gardens                                       |
 | Alps               | 54       | Alps                                          |
-
-
-## Results
-
-![Sample Image](results/example_results.png)
 
 ## Releasing a new version
 
