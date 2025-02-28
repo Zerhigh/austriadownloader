@@ -38,9 +38,11 @@ Other input parameters are:
 ## Results
 
 General overview of different classes:
+
 ![Sample Image](results/example_results.png)
 
 Unique selection of classes:
+
 ![Sample Image](results/example_results2.png)
 
 
