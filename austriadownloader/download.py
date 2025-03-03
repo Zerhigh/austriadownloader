@@ -131,19 +131,21 @@ def download_vector(request: DataRequest, state: DownloadState) -> None:
         # Find intersecting cadastral data
         vector_data = get_intersecting_cadastral(point_geometry)
 
-        # Calculate bounding box
+        # Calculate bounding box: define rasterization and extent size
+        bbox_pixel_size = request.pixel_size
+        if request.resample_size is not None:
+            bbox_pixel_size = request.resample_size
+
         bbox = calculate_bbox(
             point_planar,
-            pixel_size=request.pixel_size,
+            pixel_size=bbox_pixel_size,
             shape=request.shape[1:]
         )
 
         # Process and save vector data
-        #output_path = request.outpath / f"target_{request.id}.gpkg"
         process_vector_data(
             vector_url=vector_data["vector_url"],
             bbox=bbox,
-            #output_path=output_path,
             request=request
         )
 
