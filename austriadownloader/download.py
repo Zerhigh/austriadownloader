@@ -388,13 +388,31 @@ def process_rgbn_raster(
             # If the data is not already of shape of the blocksize, pad it
             data_total = pad_tensor(data_total, href=profile["height"], wref=profile["width"], nodata_method=request.nodata_mode)
             # resample and resize
-            trafo = src_rgb.transform
             if request.resample_size is not None:
                 resampled_arr = np.array([zoom(data_total[channel], (512 / 800, 512 / 800), order=3) for channel in range(data_total.shape[0])])
                 data_total = resampled_arr
 
+                # change window: height and width
+                window = Window(window.col_off, window.row_off, request.shape[1], request.shape[2])
 
-                return
+                # calculate neW trafo based on new windoW
+                # will be done in raster saving anyway?
+                old_transform = src_rgb.transform
+                old_pixel_size = old_transform[0]  # Assuming square pixels
+                new_pixel_size = 2.5  # Target pixel size
+
+                # Compute the scale factor
+                scale_factor = 1 / (old_pixel_size / new_pixel_size)
+                new_transform = rio.windows.transform(window, src_rgb.transform)
+                trafo = new_transform * new_transform.scale(scale_factor, scale_factor)
+                profile.update({
+                    'height': 512,
+                    'width': 512
+                })
+                pass
+            else:
+                # define normal transformation here (no upsampling done)
+                trafo = rio.windows.transform(window, src_rgb.transform)
 
             if data_total is None:
                 # creation option for nodata is on remove
@@ -467,7 +485,7 @@ def save_raster_data(
 ) -> None:
     """Save raster data to disk."""
     profile.update({
-        'transform': rio.windows.transform(window, transform),
+        'transform': transform,  # rio.windows.transform(window, transform),
         'tiled': True,
         'nodata': 0,
         'blockxsize': 256,
