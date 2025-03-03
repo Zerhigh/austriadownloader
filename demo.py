@@ -46,7 +46,7 @@ dem = pd.DataFrame([{'id': 'id_01', 'lat': 48.40086407732648, 'lon': 15.58510315
 
 code = 41
 
-for i, row in tqdm.tqdm(dem.iterrows()):
+for i, row in dem.iterrows():
     request = austriadownloader.DataRequest(
         id=row.id,
         lat=row.lat,
@@ -60,6 +60,5 @@ for i, row in tqdm.tqdm(dem.iterrows()):
         nodata_mode='flag', # or 'remove',
     )
 
-    austriadownloader.download(request, verbose=False)
+    austriadownloader.download(request, verbose=True)
 
-    break
