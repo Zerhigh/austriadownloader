@@ -1,0 +1,13 @@
+name: geo
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - gdal
+  - geopandas
+  - rasterio
+  - pyarrow
+  - dask-geopandas
+  - fiona
+  - opencv
+  - pydantic
