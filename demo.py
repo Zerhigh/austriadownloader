@@ -1,3 +1,4 @@
+import os.path
 import pathlib
 import pandas as pd
 
@@ -46,6 +47,8 @@ manager = DownloadManager(file_path='sample_even_download.csv')
 
 code = 41
 
+op = 'demo/stratification_output/'
+
 for i, row in manager.tiles.iterrows():
     request = austriadownloader.DataRequest(
         id=row.id,
@@ -54,15 +57,19 @@ for i, row in manager.tiles.iterrows():
         pixel_size=1.6,
         resample_size=2.5,
         shape=(4, 512, 512),  # for RGB just use (3, 1024, 1024)
-        outpath=f"demo/stratification_output/",
+        outpath=f"{op}",
         mask_label=code,  # Base: Buildings
         create_gpkg=False,
         nodata_mode='flag', # or 'remove',
     )
 
+    # if file is already downloaded, skip it
+    if os.path.exists(f'{op}/input_{request.id}.tif') and os.path.exists(f'{op}/target_{request.id}.tif'):
+        continue
+
     download = austriadownloader.download(request, verbose=True)
     manager.state.loc[download.id] = download.get_state()
 
-manager.state.to_csv('demo/stratification_output/statelog.csv')
+manager.state.to_csv(f'{op}/statelog.csv')
 
 pass

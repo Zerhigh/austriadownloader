@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 import rasterio as rio
 import cv2
+import warnings
 from pyproj import Transformer
 from rasterio.features import rasterize
 from rasterio.windows import Window
@@ -76,15 +77,33 @@ def download(request: DataRequest, verbose: bool) -> DownloadState:
         state = DownloadState(id=request.id)
         if verbose:
             print(f'Tile: {request.id}')
+
+        # Transform coordinates to planar CRS
+        point_planar = transform_coordinates(
+            (request.lon, request.lat),
+            from_crs=WGS84,
+            to_crs=AUSTRIA_CRS
+        )
+        point_geometry = Point(*point_planar)
+
+        # Find intersecting meta data
+        meta_data = get_intersecting_cadastral(point_geometry)
+
+        # Point has been sampeld out of queryable area of Austria
+        if meta_data is None:
+            state.set_raster_failed()
+            state.set_vector_failed()
+            return state
+
         # Download appropriate raster data based on channel count
         if request.shape[0] == 3:
             if verbose:
                 print("    Downloading RGB raster data.")
-            download_rasterdata_rgb(request, state)
+            download_rasterdata_rgb(request, state, meta_data)
         elif request.shape[0] == 4:
             if verbose:
                 print("    Downloading RGB and NIR raster data.")
-            download_rasterdata_rgbn(request, state)
+            download_rasterdata_rgbn(request, state, meta_data)
         else:
             raise ValueError(f"    Invalid channel count: {request.shape[0]}. Must be 3 (RGB) or 4 (RGB and NIR).")
 
@@ -92,13 +111,12 @@ def download(request: DataRequest, verbose: bool) -> DownloadState:
         if state.check_raster():
             if verbose:
                 print(f"    Downloading vector cadastral data: Code(s): {request.mask_label}")
-            download_vector(request, state)
+            download_vector(request, state, point_planar, meta_data)
             if verbose:
                 print(f"    Finished downloading and processing data to: {request.outpath}\*_{request.id}.tif")
         else:
             if verbose:
-                print(
-                    f'    Did not download raster and vector data as no raster was accessed. Likely due to NoData values and {request.nodata_mode} set as "remove"')
+                print(f'    Did not download raster and vector data as no raster was accessed. Likely due to NoData values and {request.nodata_mode} set as "remove"')
 
         return state
 
@@ -106,13 +124,15 @@ def download(request: DataRequest, verbose: bool) -> DownloadState:
         raise IOError(f"Failed to process data request: {str(e)}") from e
 
 
-def download_vector(request: DataRequest, state: DownloadState) -> None:
+def download_vector(request: DataRequest, state: DownloadState, point_planar: Coordinates, vector_data: pd.Series) -> None:
     """
     Download and process vector data for the specified location.
 
     Args:
         request: DataRequest object containing location and output specifications.
-        state: Class for keeping track of Donwload Processes
+        state: Class for keeping track of Download Processes
+        point_planar: Coordinate tuple
+        vector_data: Metadata Series with download URL
 
     Returns:
         Path: Path to the processed vector data.
@@ -122,17 +142,6 @@ def download_vector(request: DataRequest, state: DownloadState) -> None:
         IOError: If vector data processing fails.
     """
     try:
-        # Transform coordinates to planar CRS
-        point_planar = transform_coordinates(
-            (request.lon, request.lat),
-            from_crs=WGS84,
-            to_crs=AUSTRIA_CRS
-        )
-        point_geometry = Point(*point_planar)
-
-        # Find intersecting cadastral data
-        vector_data = get_intersecting_cadastral(point_geometry)
-
         # Calculate bounding box: define rasterization and extent size
         bbox_pixel_size = request.pixel_size
         if request.resample_size is not None:
@@ -160,13 +169,14 @@ def download_vector(request: DataRequest, state: DownloadState) -> None:
         raise IOError(f"Vector data processing failed: {str(e)}") from e
 
 
-def download_rasterdata_rgb(request: DataRequest, state: DownloadState) -> pd.Series:
+def download_rasterdata_rgb(request: DataRequest, state: DownloadState, raster_data: pd.Series) -> pd.Series:
     """
     Download and process RGB raster data.
 
     Args:
         request: DataRequest object containing download specifications.
         state: Class for keeping track of Donwload Processes
+        raster_data: Metadata Series with download URL
 
     Returns:
         pd.Series: Metadata about the downloaded raster data.
@@ -176,15 +186,7 @@ def download_rasterdata_rgb(request: DataRequest, state: DownloadState) -> pd.Se
         IOError: If raster processing fails.
     """
     try:
-        point_planar = transform_coordinates(
-            (request.lon, request.lat),
-            from_crs=WGS84,
-            to_crs=AUSTRIA_CRS
-        )
-        point_geometry = Point(*point_planar)
 
-        # Get appropriate raster data
-        raster_data = get_intersecting_cadastral(point_geometry)
         overview_level = VALID_OVERVIEWS[request.pixel_size]
 
         process_rgb_raster(
@@ -201,13 +203,14 @@ def download_rasterdata_rgb(request: DataRequest, state: DownloadState) -> pd.Se
         raise IOError(f"RGB raster processing failed: {str(e)}") from e
 
 
-def download_rasterdata_rgbn(request: DataRequest, state: DownloadState) -> pd.Series:
+def download_rasterdata_rgbn(request: DataRequest, state: DownloadState, raster_data: pd.Series) -> pd.Series:
     """
     Download and process RGBN (RGB + Near Infrared) raster data.
 
     Args:
         request: DataRequest object containing download specifications.
         state: Class for keeping track of Donwload Processes
+        raster_data: Metadata Series with download URL
 
     Returns:
         pd.Series: Metadata about the downloaded raster data.
@@ -217,15 +220,7 @@ def download_rasterdata_rgbn(request: DataRequest, state: DownloadState) -> pd.S
         IOError: If raster processing fails.
     """
     try:
-        point_planar = transform_coordinates(
-            (request.lon, request.lat),
-            from_crs=WGS84,
-            to_crs=AUSTRIA_CRS
-        )
-        point_geometry = Point(*point_planar)
 
-        # Get appropriate raster data
-        raster_data = get_intersecting_cadastral(point_geometry)
         overview_level = VALID_OVERVIEWS[request.pixel_size]
 
         process_rgbn_raster(
@@ -254,14 +249,17 @@ def transform_coordinates(
     return transformer.transform(*point)
 
 
-def get_intersecting_cadastral(point_geometry: Point) -> pd.Series:
+def get_intersecting_cadastral(point_geometry: Point) -> pd.Series | None:
     """Get cadastral data intersecting with the given point."""
     intersecting = AUSTRIA_CADASTRAL[
         AUSTRIA_CADASTRAL.intersects(point_geometry, align=True)
     ]
     if intersecting.empty:
-        raise ValueError("Location is outside Austria's cadastral boundaries")
-    return intersecting.iloc[0]
+        warnings.warn("Skipping: Location is outside Austria's cadastral boundaries", UserWarning)
+        return None
+        # raise ValueError("Location is outside Austria's cadastral boundaries")
+    else:
+        return intersecting.iloc[0]
 
 
 def calculate_bbox(
