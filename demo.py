@@ -1,11 +1,11 @@
 import pathlib
 import pandas as pd
-import tqdm
 
+from austriadownloader.downloadstate import DownloadManager
 import austriadownloader
 
 pathlib.Path("demo/").mkdir(parents=True, exist_ok=True)
-pathlib.Path("demo/output/").mkdir(parents=True, exist_ok=True)
+pathlib.Path("demo/stratification_output/").mkdir(parents=True, exist_ok=True)
 
 land_use_codes = {
     41: "Buildings",
@@ -42,11 +42,11 @@ dem = pd.DataFrame([{'id': 'id_01', 'lat': 48.40086407732648, 'lon': 15.58510315
                     {'id': 'id_05', 'lat': 48.219523815790424, 'lon': 16.40504050915158},
                     {'id': 'id_06', 'lat': 48.10538361840102, 'lon': 16.22915864360271}])
 
-#dem = pd.read_csv('stratified_sample_austria.csv')
+manager = DownloadManager(file_path='sample_even_download.csv')
 
 code = 41
 
-for i, row in dem.iterrows():
+for i, row in manager.tiles[10:20].iterrows():
     request = austriadownloader.DataRequest(
         id=row.id,
         lat=row.lat,
@@ -54,11 +54,15 @@ for i, row in dem.iterrows():
         pixel_size=1.6,
         resample_size=2.5,
         shape=(4, 512, 512),  # for RGB just use (3, 1024, 1024)
-        outpath=f"demo/output/",
+        outpath=f"demo/stratification_output/",
         mask_label=code,  # Base: Buildings
         create_gpkg=False,
         nodata_mode='flag', # or 'remove',
     )
 
-    austriadownloader.download(request, verbose=True)
+    download = austriadownloader.download(request, verbose=True)
+    manager.state.loc[download.id] = download.get_state()
 
+manager.state.to_csv('demo/stratification_output/statelog.csv')
+
+pass

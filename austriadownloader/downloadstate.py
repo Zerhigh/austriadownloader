@@ -1,3 +1,29 @@
+# Parent class: DownloadManager (Manages the overall download process)
+import pandas as pd
+
+
+class DownloadManager:
+
+    def __init__(self, file_path=None, cols=('id', 'aerial', 'cadster', 'num_items', 'area_items')):
+        """
+        Initialize the DownloadManager.
+        If a file path is provided, it will automatically load the tile list from the file.
+        """
+        self.tiles: pd.DataFrame | None = None
+        self.state: pd.DataFrame = pd.DataFrame(columns=cols)
+
+        # Automatically load file if provided
+        if file_path:
+            self.load_datafile(file_path)
+
+    def load_datafile(self, file_path):
+        try:
+            self.tiles = pd.read_csv(file_path)
+            print(f"Successfully loaded {len(self.tiles)} tiles from {file_path}.")
+        except Exception as e:
+            print(f"Error loading file: {e}")
+
+
 class DownloadState:
     """
     Manages the state of raster and vector data downloads.
@@ -35,6 +61,15 @@ class DownloadState:
         self.id: str = id
         self.raster_download_success: bool = False
         self.vector_download_success: bool = False
+        self.num_items: int = 0
+        self.area_items: float = 0
+
+    def get_state(self) -> dict:
+        return {'id': self.id,
+                'aerial': self.raster_download_success,
+                'cadster': self.vector_download_success,
+                'num_items': self.num_items,
+                'area_items': self.area_items}
 
     def set_raster_failed(self):
         """Marks the raster download as failed."""

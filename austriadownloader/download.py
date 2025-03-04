@@ -55,7 +55,7 @@ AUSTRIA_CRS: Final[str] = "EPSG:31287"
 # BUILDING_CLASS: Final[int] = 92  # Building class code
 
 
-def download(request: DataRequest, verbose: bool) -> Path:
+def download(request: DataRequest, verbose: bool) -> DownloadState:
     """
     Download and process both raster and vector data for the requested area.
 
@@ -100,7 +100,7 @@ def download(request: DataRequest, verbose: bool) -> Path:
                 print(
                     f'    Did not download raster and vector data as no raster was accessed. Likely due to NoData values and {request.nodata_mode} set as "remove"')
 
-        return request.outpath
+        return state
 
     except Exception as e:
         raise IOError(f"Failed to process data request: {str(e)}") from e
@@ -148,7 +148,8 @@ def download_vector(request: DataRequest, state: DownloadState) -> None:
         process_vector_data(
             vector_url=vector_data["vector_url"],
             bbox=bbox,
-            request=request
+            request=request,
+            state=state
         )
 
         state.set_vector_successful()
@@ -282,7 +283,8 @@ def calculate_bbox(
 def process_vector_data(
         vector_url: str,
         bbox: BoundingBox,
-        request: DataRequest
+        request: DataRequest,
+        state: DownloadState
 ) -> None:
     """Process and save vector data within the specified bounding box."""
     with fiona.open(vector_url, layer="NFL") as src:
@@ -292,6 +294,9 @@ def process_vector_data(
                 for feat in src.filter(bbox=bbox)
                     if feat["properties"].get("NS") in request.mask_label
         ]
+
+        # add number of objects to state managEr
+        state.num_items = len(filtered_features)
 
         # Objects ahve been found and will be transformed into raster
         if len(filtered_features) > 0:
@@ -309,6 +314,10 @@ def process_vector_data(
                 binary_raster = rasterize(shapes, out_shape=request.shape[1:], transform=img_src.transform,
                                           fill=0)
 
+                set_pixels = np.count_nonzero(binary_raster == 1)
+                psize = request.pixel_size if request.resample_size is not None else request.resample_size
+                state.area_items = round(psize**2 * set_pixels, 2)
+
                 # Save the rasterized binary image
                 with rio.open(
                         fp=request.outpath / f"target_{request.id}.tif",
@@ -324,7 +333,7 @@ def process_vector_data(
                     dst.write(binary_raster, 1)
         # write empty image
         else:
-            print(f'No results for: lat: {request.lat} // lon: {request.lon}')
+            print(f'    No results for class {request.mask_label} at lat: {request.lat} // lon: {request.lon}')
             with rio.open(request.outpath / f"input_{request.id}.tif") as img_src:
                 binary_raster = np.zeros((request.shape[1], request.shape[1]), dtype=np.uint8)
 
