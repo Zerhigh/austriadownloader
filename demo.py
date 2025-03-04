@@ -70,6 +70,10 @@ for i, row in manager.tiles.iterrows():
     download = austriadownloader.download(request, verbose=True)
     manager.state.loc[download.id] = download.get_state()
 
-manager.state.to_csv(f'{op}/statelog.csv')
+    # save every 100 steps
+    if i % 100 == 0:
+        manager.state.to_csv(f'{op}/statelog.csv', index=False)
+
+manager.state.to_csv(f'{op}/statelog.csv', index=False)
 
 pass
