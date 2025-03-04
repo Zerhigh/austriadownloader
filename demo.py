@@ -46,7 +46,7 @@ manager = DownloadManager(file_path='sample_even_download.csv')
 
 code = 41
 
-for i, row in manager.tiles[10:20].iterrows():
+for i, row in manager.tiles.iterrows():
     request = austriadownloader.DataRequest(
         id=row.id,
         lat=row.lat,
