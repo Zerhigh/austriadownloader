@@ -1,11 +1,11 @@
 import os.path
 import pathlib
 import pandas as pd
-
+from tqdm import tqdm
 from austriadownloader.downloadstate import DownloadManager
 import austriadownloader
 
-from multiprocessing import Pool
+from multiprocessing import Pool, Manager
 
 pathlib.Path("demo/").mkdir(parents=True, exist_ok=True)
 pathlib.Path("demo/stratification_output/").mkdir(parents=True, exist_ok=True)
@@ -52,7 +52,7 @@ dem = pd.DataFrame([{'id': 'id_01', 'lat': 48.40086407732648, 'lon': 15.58510315
 # op = 'demo/stratification_output/'
 
 
-def download_tile(row):
+def download_tile(row, queue):
     op = 'demo/stratification_output/'
     code = 41
 
@@ -71,11 +71,16 @@ def download_tile(row):
 
     # Skip if the file already exists
     if os.path.exists(f'{op}/input_{request.id}.tif') and os.path.exists(f'{op}/target_{request.id}.tif'):
+        queue.put((request.id, None))  # Skip processing, report status
         return request.id, None  # Skip processing
 
     download = austriadownloader.download(request, verbose=False)
 
+    # Put the result into the queue
+    queue.put((download.id, download.get_state()))
+
     return download.id, download.get_state()
+
 
 def main():
     manager = DownloadManager(file_path='sample_even_download.csv')
@@ -83,22 +88,36 @@ def main():
     op = 'demo/stratification_output/'
 
     # Extract rows as dictionaries for easier parallel processing
-    rows = [row for _, row in manager.tiles.iterrows()]
+    rows = [row for _, row in manager.tiles[:10].iterrows()]
 
-    with Pool(processes=os.cpu_count()) as pool:
-        results = pool.map(download_tile, rows)
+    # Create a Queue to communicate with the main process
+    with Manager() as manager_instance:
+        queue = manager_instance.Queue()
 
-    # Update manager state after parallel processing
-    for tile_id, state in results:
-        if state:  # If state is not None, update the manager
-            manager.state.loc[tile_id] = state
+        # Set up the progress bar using tqdm
+        with Pool(processes=os.cpu_count()) as pool:
+            # Initialize tqdm with the number of rows to process
+            progress_bar = tqdm(total=len(rows), desc="Downloading Tiles", unit="tile")
 
-    # Save state log
-    manager.state.to_csv(f'{op}/statelog.csv', index=False)
+            # Use starmap to pass both the row and the queue to the worker
+            # Pass the progress_bar to update it in the worker
+            pool.starmap(download_tile, [(row, queue) for row in rows])
+
+            # Now process the results that are put into the queue
+            for _ in range(len(rows)):
+                tile_id, state = queue.get()  # Retrieve results from queue
+                if state:  # If state is not None, update the manager
+                    manager.state.loc[tile_id] = state
+                progress_bar.update(1)  # Update the progress bar for each completed task
+
+            progress_bar.close()  # Close the progress bar after all tasks are finished
+
+        # Save the state log
+        manager.state.to_csv(f'{op}/statelog.csv', index=False)
+
 
 if __name__ == "__main__":
     main()
-
 # for i, row in manager.tiles.iterrows():
 #     request = austriadownloader.DataRequest(
 #         id=row.id,
