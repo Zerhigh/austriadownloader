@@ -52,7 +52,7 @@ dem = pd.DataFrame([{'id': 'id_01', 'lat': 48.40086407732648, 'lon': 15.58510315
 # op = 'demo/stratification_output/'
 
 
-def download_tile(row, queue):
+def download_tile(row):
     op = 'demo/stratification_output/'
     code = 41
 
@@ -71,13 +71,9 @@ def download_tile(row, queue):
 
     # Skip if the file already exists
     if os.path.exists(f'{op}/input_{request.id}.tif') and os.path.exists(f'{op}/target_{request.id}.tif'):
-        queue.put((request.id, None))  # Skip processing, report status
         return request.id, None  # Skip processing
 
     download = austriadownloader.download(request, verbose=False)
-
-    # Put the result into the queue
-    queue.put((download.id, download.get_state()))
 
     return download.id, download.get_state()
 
@@ -90,30 +86,17 @@ def main():
     # Extract rows as dictionaries for easier parallel processing
     rows = [row for _, row in manager.tiles[:10].iterrows()]
 
-    # Create a Queue to communicate with the main process
-    with Manager() as manager_instance:
-        queue = manager_instance.Queue()
+    with Pool(processes=os.cpu_count()) as pool:
+        results = pool.map(download_tile, rows)
 
-        # Set up the progress bar using tqdm
-        with Pool(processes=os.cpu_count()) as pool:
-            # Initialize tqdm with the number of rows to process
-            progress_bar = tqdm(total=len(rows), desc="Downloading Tiles", unit="tile")
+        # Update manager state after parallel processing
 
-            # Use starmap to pass both the row and the queue to the worker
-            # Pass the progress_bar to update it in the worker
-            pool.starmap(download_tile, [(row, queue) for row in rows])
+    for tile_id, state in results:
+        if state:  # If state is not None, update the manager
+            manager.state.loc[tile_id] = state
 
-            # Now process the results that are put into the queue
-            for _ in range(len(rows)):
-                tile_id, state = queue.get()  # Retrieve results from queue
-                if state:  # If state is not None, update the manager
-                    manager.state.loc[tile_id] = state
-                progress_bar.update(1)  # Update the progress bar for each completed task
-
-            progress_bar.close()  # Close the progress bar after all tasks are finished
-
-        # Save the state log
-        manager.state.to_csv(f'{op}/statelog.csv', index=False)
+    # Save the state log
+    manager.state.to_csv(f'{op}/statelog.csv', index=False)
 
 
 if __name__ == "__main__":
