@@ -1,11 +1,7 @@
 from pathlib import Path
-import pathlib
 
-from austriadownloader.downloadmanager import RDownloadManager
-from austriadownloader.configmanager import RConfigManager
-
-pathlib.Path("demo/").mkdir(parents=True, exist_ok=True)
-pathlib.Path("demo/stratification_output/").mkdir(parents=True, exist_ok=True)
+from austriadownloader.downloadmanager import DownloadManager
+from austriadownloader.configmanager import ConfigManager
 
 land_use_codes = {
     41: "Buildings",
@@ -35,9 +31,13 @@ land_use_codes = {
     54: "Alps"
 }
 
+
 def main():
+    Path("demo/").mkdir(parents=True, exist_ok=True)
+    Path("demo/stratification_output/").mkdir(parents=True, exist_ok=True)
+
     config_path = Path("C:/Users/PC/Coding/GeoQuery/demo/config.yml")
-    manager = RDownloadManager(config=RConfigManager.from_config_file(config_path))
+    manager = DownloadManager(config=ConfigManager.from_config_file(config_path))
     manager.start_download()
     pass
 

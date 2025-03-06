@@ -24,8 +24,8 @@ from rasterio.windows import Window
 from shapely.geometry import Point, shape
 
 from austriadownloader.data import AUSTRIA_CADASTRAL
-from austriadownloader.configmanager import RConfigManager
-from austriadownloader.downloadmanager import RDownloadState
+from austriadownloader.configmanager import ConfigManager
+from austriadownloader.downloadmanager import DownloadState
 
 # Type aliases for improved readability
 Coordinates: TypeAlias = Tuple[float, float]
@@ -55,7 +55,7 @@ AUSTRIA_CRS: Final[str] = "EPSG:31287"
 # BUILDING_CLASS: Final[int] = 92  # Building class code
 
 
-def download(tile_state: RDownloadState, config: RConfigManager, verbose: bool) -> RDownloadState:
+def download(tile_state: DownloadState, config: ConfigManager, verbose: bool) -> DownloadState:
     """
     Download and process both raster and vector data for the requested area.
 
@@ -123,7 +123,7 @@ def download(tile_state: RDownloadState, config: RConfigManager, verbose: bool) 
         raise IOError(f"Failed to process data request: {str(e)}") from e
 
 
-def download_vector(tile_state: RDownloadState, config: RConfigManager, point_planar: Coordinates, vector_data: pd.Series) -> None:
+def download_vector(tile_state: DownloadState, config: ConfigManager, point_planar: Coordinates, vector_data: pd.Series) -> None:
     """
     Download and process vector data for the specified location.
 
@@ -168,7 +168,7 @@ def download_vector(tile_state: RDownloadState, config: RConfigManager, point_pl
         raise IOError(f"Vector data processing failed: {str(e)}") from e
 
 
-def download_rasterdata_rgb(tile_state: RDownloadState, config: RConfigManager, raster_data: pd.Series) -> pd.Series:
+def download_rasterdata_rgb(tile_state: DownloadState, config: ConfigManager, raster_data: pd.Series) -> pd.Series:
     """
     Download and process RGB raster data.
 
@@ -245,7 +245,7 @@ def download_rasterdata_rgb(tile_state: RDownloadState, config: RConfigManager, 
         raise IOError(f"RGB raster processing failed: {str(e)}") from e
 
 
-def download_rasterdata_rgbn(tile_state: RDownloadState, config: RConfigManager, raster_data: pd.Series) -> pd.Series:
+def download_rasterdata_rgbn(tile_state: DownloadState, config: ConfigManager, raster_data: pd.Series) -> pd.Series:
     """
     Download and process RGBN (RGB + Near Infrared) raster data.
 
@@ -372,8 +372,8 @@ def calculate_bbox(
 def process_vector_data(
         vector_url: str,
         bbox: BoundingBox,
-        config: RConfigManager,
-        tile_state: RDownloadState
+        config: ConfigManager,
+        tile_state: DownloadState
 ) -> None:
     """Process and save vector data within the specified bounding box."""
 
@@ -449,7 +449,7 @@ def process_vector_data(
 def prepare_raster_window(
         src: rio.DatasetReader,
         point: Coordinates,
-        config: RConfigManager
+        config: ConfigManager
 ) -> Tuple[Window, Dict]:
     """Prepare raster window and profile for data extraction."""
     point_raster = transform_coordinates(
@@ -496,8 +496,8 @@ def prepare_raster_window(
 def save_raster_data(
         data: np.ndarray,
         profile: Dict,
-        config: RConfigManager,
-        tile_state: RDownloadState,
+        config: ConfigManager,
+        tile_state: DownloadState,
         transform: rio.Affine,
 ) -> None:
     """Save raster data to disk."""

@@ -14,7 +14,7 @@ VALID_MASK_LABELS: Final = (40, 41, 42, 48, 52, 53, 54, 55, 56, 57, 58, 59, 60, 
 VALID_DOWNLOADS_METHODS: Final = ('sequential', 'parallel')
 
 
-class RConfigManager(BaseModel):
+class ConfigManager(BaseModel):
     data_path: Path | str
     pixel_size: float
     shape: ImageShape
@@ -27,6 +27,9 @@ class RConfigManager(BaseModel):
     create_gpkg: bool = False
     nodata_mode: str = 'flag'
     nodata_value: int = 0
+
+    class Config:
+        frozen = True  # Make instances immutable
 
     @field_validator("nodata_mode")
     @classmethod
@@ -91,11 +94,8 @@ class RConfigManager(BaseModel):
             raise ValueError(f"Invalid download method: {value}. Must be one of {VALID_DOWNLOADS_METHODS}")
         return value
 
-    class Config:
-        frozen = True  # Make instances immutable
-
     @classmethod
-    def from_config_file(cls, file_path: str | Path) -> "RConfigManager":
+    def from_config_file(cls, file_path: str | Path) -> "ConfigManager":
         path = Path(file_path)
         if not path.exists() or not path.is_file():
             raise FileNotFoundError(f"Configuration file not found: {file_path}")

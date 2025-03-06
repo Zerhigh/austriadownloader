@@ -2,8 +2,7 @@ from typing import Dict
 from pydantic import BaseModel, field_validator
 
 
-
-class RDownloadState(BaseModel):
+class DownloadState(BaseModel):
     id: str | int | float
     lat: float
     lon: float
@@ -12,14 +11,14 @@ class RDownloadState(BaseModel):
     num_items: int = 0
     area_items: float = 0.0
 
+    class Config:
+        # This ensures that the model is mutable after initialization (default behavior)
+        frozen = False
+
     @field_validator("id")
     @classmethod
     def validate_id(cls, value: str | int | float) -> str:
         return str(value) if isinstance(value, int) else str(int(value)) if isinstance(value, float) else value
-
-    class Config:
-        # This ensures that the model is mutable after initialization (default behavior)
-        frozen = False
 
     def get_state(self) -> Dict[str, any]:
         return {
