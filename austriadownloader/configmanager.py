@@ -15,10 +15,6 @@ VALID_DOWNLOADS_METHODS: Final = ('sequential', 'parallel')
 
 
 class RConfigManager(BaseModel):
-    # id: str | int
-    # lon: float
-    # lat: float
-
     data_path: Path | str
     pixel_size: float
     shape: ImageShape
@@ -31,11 +27,6 @@ class RConfigManager(BaseModel):
     create_gpkg: bool = False
     nodata_mode: str = 'flag'
     nodata_value: int = 0
-
-    # @field_validator("id")
-    # @classmethod
-    # def validate_id(cls, value: str | int) -> str:
-    #     return str(value) if isinstance(value, int) else value
 
     @field_validator("nodata_mode")
     @classmethod
@@ -104,7 +95,7 @@ class RConfigManager(BaseModel):
         frozen = True  # Make instances immutable
 
     @classmethod
-    def from_config_file(cls, file_path: str | Path) -> "DataRequest":
+    def from_config_file(cls, file_path: str | Path) -> "RConfigManager":
         path = Path(file_path)
         if not path.exists() or not path.is_file():
             raise FileNotFoundError(f"Configuration file not found: {file_path}")
@@ -132,21 +123,3 @@ class RConfigManager(BaseModel):
             return cls(**config_data)
         except ValidationError as e:
             raise ValueError(f"Invalid configuration: {e}")
-
-
-# # Path to your configuration file (JSON or YAML)
-# config_path = Path("C:/Users/PC/Coding/GeoQuery/demo/config.yml")  # Change to "config.json" if using JSON
-#
-# # Load the configuration into a DataRequest instance
-# try:
-#     data_request = RConfigManager.from_config_file(config_path)
-#     print("Configuration loaded successfully:")
-#     print(data_request)
-# except Exception as e:
-#     print(f"Error loading configuration: {e}")
-#
-#
-# pass
-
-
-

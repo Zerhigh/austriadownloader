@@ -1,16 +1,13 @@
 # Parent class: DownloadManager (Manages the overall download process)
+import os
+import pathlib
+from typing import Dict, Tuple
+
 import pandas as pd
+from pydantic import BaseModel, field_validator
+
 import austriadownloader
 from austriadownloader.configmanager import RConfigManager
-import os
-from pathlib import Path
-import pathlib
-
-from pydantic import BaseModel
-from typing import Dict, Tuple
-from pydantic import BaseModel, field_validator
-from tqdm import tqdm
-from multiprocessing import Pool, Manager
 
 pathlib.Path("demo/").mkdir(parents=True, exist_ok=True)
 pathlib.Path("demo/stratification_output/").mkdir(parents=True, exist_ok=True)
@@ -85,7 +82,6 @@ class RDownloadState(BaseModel):
     vector_download_success: bool = False
     num_items: int = 0
     area_items: float = 0.0
-
 
     @field_validator("id")
     @classmethod
