@@ -1,7 +1,7 @@
 import json
 import yaml
 from pathlib import Path
-from typing import Literal, Final, TypeAlias
+from typing import Literal, Final, TypeAlias, Dict
 from pydantic import BaseModel, field_validator, ValidationError
 
 # Type aliases
@@ -18,12 +18,15 @@ class RConfigManager(BaseModel):
     # id: str | int
     # lon: float
     # lat: float
+
     data_path: Path | str
     pixel_size: float
-    resample_size: float | None = None
     shape: ImageShape
     outpath: Path | str
     mask_label: list[int] | tuple[int] | int
+
+    outfile_prefixes: Dict[str, str] = {"raster": "input", "vector": "target"}
+    resample_size: float | int | None = None
     download_method: str = 'sequential'
     create_gpkg: bool = False
     nodata_mode: str = 'flag'
@@ -40,6 +43,16 @@ class RConfigManager(BaseModel):
         if value not in {"flag", "remove"}:
             raise ValueError("Operation mode must be either 'flag' or 'remove'")
         return value
+
+    @field_validator("resample_size")
+    @classmethod
+    def validate_resample_size(cls, value: float | int | None) -> float | None:
+        if value is None:
+            return value
+        elif isinstance(value, (float, int)) and value > 0:
+            return float(value)
+        else:
+            raise ValueError("Provide as float, int or None - null in config.yml")
 
     @field_validator("shape")
     @classmethod
@@ -110,7 +123,8 @@ class RConfigManager(BaseModel):
             "create_gpkg": False,
             "nodata_mode": "flag",
             "nodata_value": 0,
-            "download_method": "sequential"
+            "download_method": "sequential",
+            "outfile_prefixes": {"raster": "input", "vector": "target"}
         }
         config_data = {**default_values, **config_data}  # Merge defaults with provided values
 

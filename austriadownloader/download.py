@@ -110,13 +110,13 @@ def download(tile_state: RDownloadState, config: RConfigManager, verbose: bool) 
         # Process vector data
         if tile_state.check_raster():
             if verbose:
-                print(f"    Downloading vector cadastral data: Code(s): {tile_state.mask_label}")
+                print(f"    Downloading vector cadastral data: Code(s): {config.mask_label}")
             download_vector(tile_state, config, point_planar, meta_data)
             if verbose:
-                print(f"    Finished downloading and processing data to: {tile_state.outpath}\*_{tile_state.id}.tif")
+                print(f"    Finished downloading and processing data to: {config.outpath}\*_{tile_state.id}.tif")
         else:
             if verbose:
-                print(f'    Did not download raster and vector data as no raster was accessed. Likely due to NoData values and {tile_state.nodata_mode} set as "remove"')
+                print(f'    Did not download raster and vector data as no raster was accessed. Likely due to NoData values and {config.nodata_mode} set as "remove"')
 
         return tile_state
 
@@ -189,7 +189,7 @@ def download_rasterdata_rgb(tile_state: RDownloadState, config: RConfigManager, 
 
         overview_level = VALID_OVERVIEWS[config.pixel_size]
 
-        point = (config.lon, config.lat)
+        point = (tile_state.lon, tile_state.lat)
         raster_hw = config.shape[1] # assumption raster is squaRe
 
         with rio.open(raster_data["RGB_raster"], overview_level=overview_level) as src:
@@ -236,6 +236,7 @@ def download_rasterdata_rgb(tile_state: RDownloadState, config: RConfigManager, 
                     data=data,
                     profile=profile,
                     config=config,
+                    tile_state=tile_state,
                     transform=trafo
                 )
 
@@ -265,7 +266,7 @@ def download_rasterdata_rgbn(tile_state: RDownloadState, config: RConfigManager,
 
         overview_level = VALID_OVERVIEWS[config.pixel_size]
 
-        point = (config.lon, config.lat)
+        point = (tile_state.lon, tile_state.lat)
         raster_hw = config.shape[1]  # assumption raster is squaRe
 
         # process_rgbn_raster(
@@ -328,6 +329,7 @@ def download_rasterdata_rgbn(tile_state: RDownloadState, config: RConfigManager,
                         data=data_total,
                         profile=profile,
                         config=config,
+                        tile_state=tile_state,
                         transform=trafo
                     )
 
@@ -503,6 +505,10 @@ def process_vector_data(
         tile_state: RDownloadState
 ) -> None:
     """Process and save vector data within the specified bounding box."""
+
+    # Without file extension!
+    fp = config.outpath / f"{config.outfile_prefixes['vector']}_{tile_state.id}"
+
     with fiona.open(vector_url, layer="NFL") as src:
         # conversion to gdf: removed any property values
         filtered_features = [
@@ -519,24 +525,24 @@ def process_vector_data(
             gdf = gpd.GeoDataFrame(filtered_features, crs=src.crs)
 
             # Rasterize the geometries into the raster
-            with rio.open(config.outpath / f"input_{config.id}.tif") as img_src:
+            with rio.open(config.outpath / f"{config.outfile_prefixes['raster']}_{tile_state.id}.tif") as img_src:
                 # convert geoemtries to raster specific crs
                 gdf.to_crs(crs=img_src.crs, inplace=True)
 
                 # if requested provide transformed vector file
                 if config.create_gpkg:
-                    gdf.to_file(config.outpath / f"target_{config.id}.gpkg", driver='GPKG', layer='NFL')
+                    gdf.to_file(fp.with_suffix(".gpkg"), driver='GPKG', layer='NFL')
                 shapes = [(geom, 1) for geom in gdf.geometry]  # Assign value 1 to features
                 binary_raster = rasterize(shapes, out_shape=config.shape[1:], transform=img_src.transform,
                                           fill=0)
 
                 set_pixels = np.count_nonzero(binary_raster == 1)
-                psize = config.pixel_size if config.resample_size is not None else config.resample_size
+                psize = config.pixel_size if config.resample_size is None else config.resample_size
                 tile_state.area_items = round(psize**2 * set_pixels, 2)
 
                 # Save the rasterized binary image
                 with rio.open(
-                        fp=config.outpath / f"target_{config.id}.tif",
+                        fp=fp.with_suffix(".tif"),
                         mode="w+",
                         driver="GTiff",
                         height=config.shape[1],
@@ -549,13 +555,13 @@ def process_vector_data(
                     dst.write(binary_raster, 1)
         # write empty image
         else:
-            print(f'    No results for class {config.mask_label} at lat: {config.lat} // lon: {config.lon}')
-            with rio.open(config.outpath / f"input_{config.id}.tif") as img_src:
+            print(f'    No results for class {config.mask_label} at lat: {tile_state.lat} // lon: {tile_state.lon}')
+            with rio.open(config.outpath / f"input_{tile_state.id}.tif") as img_src:
                 binary_raster = np.zeros((config.shape[1], config.shape[1]), dtype=np.uint8)
 
                 # Save the rasterized binary image
                 with rio.open(
-                        fp=config.outpath / f"target_{config.id}.tif",
+                        fp=fp.with_suffix(".tif"),
                         mode="w+",
                         driver="GTiff",
                         height=config.shape[1],
@@ -620,7 +626,8 @@ def save_raster_data(
         data: np.ndarray,
         profile: Dict,
         config: RConfigManager,
-        transform: rio.Affine
+        tile_state: RDownloadState,
+        transform: rio.Affine,
 ) -> None:
     """Save raster data to disk."""
     profile.update({
@@ -631,7 +638,7 @@ def save_raster_data(
         'blockysize': 256
     })
 
-    output_path = config.outpath / f"input_{config.id}.tif"
+    output_path = config.outpath / f"{config.outfile_prefixes['raster']}_{tile_state.id}.tif"
     with rio.open(output_path, "w", **profile) as dst:
         dst.write(data)
 
