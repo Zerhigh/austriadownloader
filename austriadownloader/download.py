@@ -8,9 +8,6 @@ RGBN raster data, vector data processing, and rasterization operations.
 The module supports various pixel sizes through overview levels and ensures proper
 coordinate transformations between different coordinate reference systems (CRS).
 """
-from pathlib import Path
-from typing import Final, TypeAlias, Literal, Dict, Tuple, Optional
-
 import fiona
 import geopandas as gpd
 import numpy as np
@@ -18,6 +15,9 @@ import pandas as pd
 import rasterio as rio
 import cv2
 import warnings
+
+from pathlib import Path
+from typing import Final, TypeAlias, Literal, Dict, Tuple, Optional
 from pyproj import Transformer
 from rasterio.features import rasterize
 from rasterio.windows import Window

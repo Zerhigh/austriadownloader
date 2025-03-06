@@ -2,7 +2,7 @@ import json
 import yaml
 from pathlib import Path
 from typing import Literal, Final, TypeAlias, Dict
-from pydantic import BaseModel, field_validator, ValidationError
+from pydantic import BaseModel, field_validator, ValidationError, model_validator
 
 # Type aliases
 ChannelCount: TypeAlias = Literal[3, 4]  # RGB or RGBN
@@ -25,6 +25,7 @@ class ConfigManager(BaseModel):
     resample_size: float | int | None = None
     download_method: str = 'sequential'
     create_gpkg: bool = False
+    verbose: bool = False
     nodata_mode: str = 'flag'
     nodata_value: int = 0
 
@@ -59,6 +60,8 @@ class ConfigManager(BaseModel):
     @classmethod
     def validate_outpath(cls, value: Path | str) -> Path:
         path = Path(value)
+        # create folder structure
+        Path(path).mkdir(parents=True, exist_ok=True)
         if not path.exists() or not path.is_dir():
             raise ValueError(f"Output path is invalid: {path}")
         return path
@@ -94,6 +97,19 @@ class ConfigManager(BaseModel):
             raise ValueError(f"Invalid download method: {value}. Must be one of {VALID_DOWNLOADS_METHODS}")
         return value
 
+    @model_validator(mode="after")
+    def check_pixel_resampling_size(self):
+        """Ensure consistent pixel and resample size."""
+        if self.resample_size is not None:
+            if self.resample_size <= self.pixel_size:
+                raise ValueError(f"resample_size {self.resample_size} must be larger than pixel_size {self.pixel_size}")
+            elif self.resample_size >= VALID_PIXEL_SIZES[VALID_PIXEL_SIZES.index(self.pixel_size)+1]:
+                raise ValueError(f"resample_size {self.resample_size} must be smalelr than next largest available pixel size: {VALID_PIXEL_SIZES[VALID_PIXEL_SIZES.index(self.pixel_size)+1]}")
+            else:
+                return self
+        else:
+            return self
+
     @classmethod
     def from_config_file(cls, file_path: str | Path) -> "ConfigManager":
         path = Path(file_path)
@@ -113,6 +129,7 @@ class ConfigManager(BaseModel):
             "resample_size": None,
             "create_gpkg": False,
             "nodata_mode": "flag",
+            "verbose": False,
             "nodata_value": 0,
             "download_method": "sequential",
             "outfile_prefixes": {"raster": "input", "vector": "target"}

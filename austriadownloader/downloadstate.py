@@ -21,6 +21,7 @@ class DownloadState(BaseModel):
         return str(value) if isinstance(value, int) else str(int(value)) if isinstance(value, float) else value
 
     def get_state(self) -> Dict[str, any]:
+        """Returns the state information for adding to df."""
         return {
             'id': self.id,
             'aerial': self.raster_download_success,
