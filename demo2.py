@@ -1,9 +1,5 @@
 from pathlib import Path
 import pathlib
-import pandas as pd
-from tqdm import tqdm
-import austriadownloader
-from multiprocessing import Pool, Manager
 
 from austriadownloader.downloadmanager import RDownloadManager
 from austriadownloader.configmanager import RConfigManager
