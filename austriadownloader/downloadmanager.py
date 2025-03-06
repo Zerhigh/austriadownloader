@@ -1,128 +1,140 @@
-import json
-import yaml
+# Parent class: DownloadManager (Manages the overall download process)
+import pandas as pd
+import austriadownloader
+from austriadownloader.configmanager import RConfigManager
+import os
 from pathlib import Path
-from typing import Literal, Final, TypeAlias
-from pydantic import BaseModel, field_validator, ValidationError
+import pathlib
 
-# Type aliases
-ChannelCount: TypeAlias = Literal[3, 4]  # RGB or RGBN
-ImageShape = tuple[ChannelCount, int, int]
+from pydantic import BaseModel
+from typing import Dict, Tuple
+from pydantic import BaseModel, field_validator
+from tqdm import tqdm
+from multiprocessing import Pool, Manager
 
-# Valid constants
-VALID_PIXEL_SIZES: Final = (0.2, 0.4, 0.8, 1.6, 3.2, 6.4, 12.8, 25.6, 51.2, 102.4, 204.8)
-VALID_MASK_LABELS: Final = (40, 41, 42, 48, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 72, 83, 84, 87, 88, 92, 95, 96)
+pathlib.Path("demo/").mkdir(parents=True, exist_ok=True)
+pathlib.Path("demo/stratification_output/").mkdir(parents=True, exist_ok=True)
 
 
-class RConfigManager(BaseModel):
-    # id: str | int
-    # lon: float
-    # lat: float
-    data_path: Path | str
-    pixel_size: float
-    resample_size: float | None = None
-    shape: ImageShape
-    outpath: Path | str
-    mask_label: list[int] | tuple[int] | int
-    create_gpkg: bool = False
-    nodata_mode: str = 'flag'
-    nodata_value: int = 0
+# def validate_id(value: str | int) -> str:
+#     return str(value) if isinstance(value, int) else value
 
-    # @field_validator("id")
-    # @classmethod
-    # def validate_id(cls, value: str | int) -> str:
-    #     return str(value) if isinstance(value, int) else value
 
-    @field_validator("nodata_mode")
+class RDownloadManager:
+
+    def __init__(self, config: RConfigManager, cols: Tuple[str] = ('id', 'aerial', 'cadster', 'num_items', 'area_items')):
+        """
+        Initialize the DownloadManager.
+        If a file path is provided, it will automatically load the tile list from the file.
+        """
+        self.tiles = None
+        self.config = config
+
+        self.state: pd.DataFrame = pd.DataFrame(columns=cols)
+        self.load_datafile(config.data_path)
+
+    def load_datafile(self, file_path):
+        try:
+            self.tiles = pd.read_csv(file_path)
+            print(f"Successfully loaded {len(self.tiles)} tiles from {file_path}.")
+        except Exception as e:
+            print(f"Error loading file: {e}")
+
+    def start_download(self):
+        try:
+            if self.config.download_method == 'sequential':
+                self.download_sequential()
+            elif self.config.download_method == 'parallel':
+                self.download_parallel()
+        except Exception as e:
+            print(f"Error downloading tiles: {e}")
+
+    def download_sequential(self):
+        if self.tiles is None:
+            raise ValueError('Error: Download Data was not loaded.')
+
+        for i, row in self.tiles.iterrows():
+
+            tile_state = RDownloadState(id=row.id, lat=row.lat, lon=row.lon)
+
+            # if file is already downloaded, skip it
+            if os.path.exists(f'{self.config.outpath}/input_{tile_state.id}.tif') and os.path.exists(f'{self.config.outpath}/target_{tile_state}.tif'):
+                continue
+
+            download = austriadownloader.download(tile_state, self.config, verbose=True)
+            self.state.loc[download.id] = download.get_state()
+
+            # save every 100 steps
+            if i % 100 == 0:
+                self.state.to_csv(f'{self.config.outpath}/statelog.csv', index=False)
+
+        self.state.to_csv(f'{self.config.outpath}/statelog.csv', index=False)
+
+        return
+
+    def download_parallel(self):
+
+        return
+
+
+class RDownloadState(BaseModel):
+    id: str | int | float
+    lat: float
+    lon: float
+    raster_download_success: bool = False
+    vector_download_success: bool = False
+    num_items: int = 0
+    area_items: float = 0.0
+
+
+    @field_validator("id")
     @classmethod
-    def validate_nodata_mode(cls, value: str) -> str:
-        if value not in {"flag", "remove"}:
-            raise ValueError("Operation mode must be either 'flag' or 'remove'")
-        return value
-
-    @field_validator("shape")
-    @classmethod
-    def validate_shape(cls, value: ImageShape) -> ImageShape:
-        if len(value) != 3 or value[0] not in (3, 4) or any(dim <= 0 for dim in value):
-            raise ValueError("Invalid shape: (channels, height, width) required with channels 3 or 4.")
-        return value
-
-    @field_validator("outpath")
-    @classmethod
-    def validate_outpath(cls, value: Path | str) -> Path:
-        path = Path(value)
-        if not path.exists() or not path.is_dir():
-            raise ValueError(f"Output path is invalid: {path}")
-        return path
-
-    @field_validator("data_path")
-    @classmethod
-    def validate_data_path(cls, value: Path | str) -> Path:
-        path = Path(value)
-        if not path.exists():
-            raise ValueError(f"data_path path is invalid: {path}")
-        return path
-
-    @field_validator("pixel_size")
-    @classmethod
-    def validate_pixel_size(cls, value: float) -> float:
-        if value not in VALID_PIXEL_SIZES:
-            raise ValueError(f"Invalid pixel size: {value}. Must be one of {VALID_PIXEL_SIZES}")
-        return value
-
-    @field_validator("mask_label")
-    @classmethod
-    def validate_mask_label(cls, value: list[int] | tuple[int] | int) -> list[int]:
-        if isinstance(value, int):
-            value = [value]
-        if not all(val in VALID_MASK_LABELS for val in value):
-            raise ValueError(f"Invalid mask labels: {value}. Must be within {VALID_MASK_LABELS}")
-        return value
+    def validate_id(cls, value: str | int | float) -> str:
+        return str(value) if isinstance(value, int) else str(int(value)) if isinstance(value, float) else value
 
     class Config:
-        frozen = True  # Make instances immutable
+        # This ensures that the model is mutable after initialization (default behavior)
+        frozen = False
 
-    @classmethod
-    def from_config_file(cls, file_path: str | Path) -> "DataRequest":
-        path = Path(file_path)
-        if not path.exists() or not path.is_file():
-            raise FileNotFoundError(f"Configuration file not found: {file_path}")
-
-        with open(path, "r", encoding="utf-8") as file:
-            if path.suffix.lower() == ".json":
-                config_data = json.load(file)
-            elif path.suffix.lower() in {".yaml", ".yml"}:
-                config_data = yaml.safe_load(file)
-            else:
-                raise ValueError("Unsupported config file format. Use JSON or YAML.")
-
-        # Ensure all parameters are loaded, using defaults if necessary
-        default_values = {
-            "resample_size": None,
-            "create_gpkg": False,
-            "nodata_mode": "flag",
-            "nodata_value": 0
+    def get_state(self) -> Dict[str, any]:
+        return {
+            'id': self.id,
+            'aerial': self.raster_download_success,
+            'cadster': self.vector_download_success,
+            'num_items': self.num_items,
+            'area_items': self.area_items
         }
-        config_data = {**default_values, **config_data}  # Merge defaults with provided values
 
-        try:
-            return cls(**config_data)
-        except ValidationError as e:
-            raise ValueError(f"Invalid configuration: {e}")
+    def set_raster_failed(self):
+        """Marks the raster download as failed."""
+        self.raster_download_success = False
 
+    def set_raster_successful(self):
+        """Marks the raster download as successful."""
+        self.raster_download_success = True
 
-# Path to your configuration file (JSON or YAML)
-config_path = Path("C:/Users/PC/Coding/GeoQuery/demo/config.yml")  # Change to "config.json" if using JSON
+    def check_raster(self) -> bool:
+        """
+        Checks if the raster download was successful.
 
-# Load the configuration into a DataRequest instance
-try:
-    data_request = RDownloadManager.from_config_file(config_path)
-    print("Configuration loaded successfully:")
-    print(data_request)
-except Exception as e:
-    print(f"Error loading configuration: {e}")
+        Returns:
+            bool: True if raster download was successful, False otherwise.
+        """
+        return self.raster_download_success
 
+    def set_vector_failed(self):
+        """Marks the vector download as failed."""
+        self.vector_download_success = False
 
-pass
+    def set_vector_successful(self):
+        """Marks the vector download as successful."""
+        self.vector_download_success = True
 
+    def check_vector(self) -> bool:
+        """
+        Checks if the vector download was successful.
 
-
+        Returns:
+            bool: True if vector download was successful, False otherwise.
+        """
+        return self.vector_download_success

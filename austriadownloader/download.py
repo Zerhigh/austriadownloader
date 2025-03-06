@@ -24,8 +24,9 @@ from rasterio.windows import Window
 from shapely.geometry import Point, shape
 
 from austriadownloader.data import AUSTRIA_CADASTRAL
-from austriadownloader.datarequest import DataRequest
-from austriadownloader.downloadstate import DownloadState
+from austriadownloader.downloadmanager import RDownloadManager
+from austriadownloader.configmanager import RConfigManager
+from austriadownloader.downloadmanager import RDownloadState
 from austriadownloader.env_options import AustriaServerConfig
 
 # Type aliases for improved readability
@@ -56,12 +57,12 @@ AUSTRIA_CRS: Final[str] = "EPSG:31287"
 # BUILDING_CLASS: Final[int] = 92  # Building class code
 
 
-def download(request: DataRequest, verbose: bool) -> DownloadState:
+def download(tile_state: RDownloadState, config: RConfigManager, verbose: bool) -> RDownloadState:
     """
     Download and process both raster and vector data for the requested area.
 
     Args:
-        request: DataRequest object containing download parameters and specifications.
+        tile_state: DataRequest object containing download parameters and specifications.
         verbose: bool triggers output
 
     Returns:
@@ -74,13 +75,12 @@ def download(request: DataRequest, verbose: bool) -> DownloadState:
     # using environment options is disabled for now
     # with AustriaServerConfig().get_env("default"):
     try:
-        state = DownloadState(id=request.id)
         if verbose:
-            print(f'Tile: {request.id}')
+            print(f'Tile: {tile_state.id}')
 
         # Transform coordinates to planar CRS
         point_planar = transform_coordinates(
-            (request.lon, request.lat),
+            (tile_state.lon, tile_state.lat),
             from_crs=WGS84,
             to_crs=AUSTRIA_CRS
         )
@@ -91,40 +91,40 @@ def download(request: DataRequest, verbose: bool) -> DownloadState:
 
         # Point has been sampeld out of queryable area of Austria
         if meta_data is None:
-            state.set_raster_failed()
-            state.set_vector_failed()
-            return state
+            tile_state.set_raster_failed()
+            tile_state.set_vector_failed()
+            return tile_state
 
         # Download appropriate raster data based on channel count
-        if request.shape[0] == 3:
+        if config.shape[0] == 3:
             if verbose:
                 print("    Downloading RGB raster data.")
-            download_rasterdata_rgb(request, state, meta_data)
-        elif request.shape[0] == 4:
+            download_rasterdata_rgb(tile_state, config, meta_data)
+        elif config.shape[0] == 4:
             if verbose:
                 print("    Downloading RGB and NIR raster data.")
-            download_rasterdata_rgbn(request, state, meta_data)
+            download_rasterdata_rgbn(tile_state, config, meta_data)
         else:
-            raise ValueError(f"    Invalid channel count: {request.shape[0]}. Must be 3 (RGB) or 4 (RGB and NIR).")
+            raise ValueError(f"    Invalid channel count: {config.shape[0]}. Must be 3 (RGB) or 4 (RGB and NIR).")
 
         # Process vector data
-        if state.check_raster():
+        if tile_state.check_raster():
             if verbose:
-                print(f"    Downloading vector cadastral data: Code(s): {request.mask_label}")
-            download_vector(request, state, point_planar, meta_data)
+                print(f"    Downloading vector cadastral data: Code(s): {tile_state.mask_label}")
+            download_vector(tile_state, config, point_planar, meta_data)
             if verbose:
-                print(f"    Finished downloading and processing data to: {request.outpath}\*_{request.id}.tif")
+                print(f"    Finished downloading and processing data to: {tile_state.outpath}\*_{tile_state.id}.tif")
         else:
             if verbose:
-                print(f'    Did not download raster and vector data as no raster was accessed. Likely due to NoData values and {request.nodata_mode} set as "remove"')
+                print(f'    Did not download raster and vector data as no raster was accessed. Likely due to NoData values and {tile_state.nodata_mode} set as "remove"')
 
-        return state
+        return tile_state
 
     except Exception as e:
         raise IOError(f"Failed to process data request: {str(e)}") from e
 
 
-def download_vector(request: DataRequest, state: DownloadState, point_planar: Coordinates, vector_data: pd.Series) -> None:
+def download_vector(tile_state: RDownloadState, config: RConfigManager, point_planar: Coordinates, vector_data: pd.Series) -> None:
     """
     Download and process vector data for the specified location.
 
@@ -143,33 +143,33 @@ def download_vector(request: DataRequest, state: DownloadState, point_planar: Co
     """
     try:
         # Calculate bounding box: define rasterization and extent size
-        bbox_pixel_size = request.pixel_size
-        if request.resample_size is not None:
-            bbox_pixel_size = request.resample_size
+        bbox_pixel_size = config.pixel_size
+        if config.resample_size is not None:
+            bbox_pixel_size = config.resample_size
 
         bbox = calculate_bbox(
             point_planar,
             pixel_size=bbox_pixel_size,
-            shape=request.shape[1:]
+            shape=config.shape[1:]
         )
 
         # Process and save vector data
         process_vector_data(
             vector_url=vector_data["vector_url"],
             bbox=bbox,
-            request=request,
-            state=state
+            config=config,
+            tile_state=tile_state
         )
 
-        state.set_vector_successful()
+        tile_state.set_vector_successful()
         return
 
     except Exception as e:
-        state.set_vector_failed()
+        tile_state.set_vector_failed()
         raise IOError(f"Vector data processing failed: {str(e)}") from e
 
 
-def download_rasterdata_rgb(request: DataRequest, state: DownloadState, raster_data: pd.Series) -> pd.Series:
+def download_rasterdata_rgb(tile_state: RDownloadState, config: RConfigManager, raster_data: pd.Series) -> pd.Series:
     """
     Download and process RGB raster data.
 
@@ -187,15 +187,57 @@ def download_rasterdata_rgb(request: DataRequest, state: DownloadState, raster_d
     """
     try:
 
-        overview_level = VALID_OVERVIEWS[request.pixel_size]
+        overview_level = VALID_OVERVIEWS[config.pixel_size]
 
-        process_rgb_raster(
-            raster_path=raster_data["RGB_raster"],
-            request=request,
-            point=(request.lon, request.lat),
-            overview_level=overview_level,
-            state=state
-        )
+        point = (config.lon, config.lat)
+        raster_hw = config.shape[1] # assumption raster is squaRe
+
+        with rio.open(raster_data["RGB_raster"], overview_level=overview_level) as src:
+            window, profile = prepare_raster_window(src, point, config)
+            data = src.read(window=window)
+
+            # If the data is not already of shape of the blocksize, pad it
+            data = pad_tensor(data, href=profile["height"], wref=profile["width"], nodata_method=config.nodata_mode)
+
+            if config.resample_size is not None:
+                data = np.array([
+                    cv2.resize(data[channel], (raster_hw, raster_hw), interpolation=cv2.INTER_LINEAR)
+                    for channel in range(data.shape[0])
+                ])
+
+                # change window: height and width
+                window = Window(window.col_off, window.row_off, raster_hw, raster_hw)
+
+                # Scale factor: 1 / (old pixel size  / new pixel size) -> division as Affine doesnt accept division
+                scale_factor = 1 / (src.transform[0] / config.resample_size)
+
+                # calculate neW trafo based on new window
+                new_transform = rio.windows.transform(window, src.transform)
+                trafo = new_transform * new_transform.scale(scale_factor, scale_factor)
+
+                # update profiler
+                profile.update({
+                    'height': raster_hw,
+                    'width': raster_hw
+                })
+            else:
+                # define normal transformation here (no upsampling done)
+                trafo = rio.windows.transform(window, src.transform)
+
+            if data is None:
+                # creation option for nodata is on remove
+                tile_state.set_raster_failed()
+                print(
+                    f'Skipping raster {config.outpath} as NoData values were contained and nodata_mode={config.nodata_mode}')
+            else:
+                tile_state.set_raster_successful()
+                profile.update({'nodata': config.nodata_value})
+                save_raster_data(
+                    data=data,
+                    profile=profile,
+                    config=config,
+                    transform=trafo
+                )
 
         return raster_data
 
@@ -203,7 +245,7 @@ def download_rasterdata_rgb(request: DataRequest, state: DownloadState, raster_d
         raise IOError(f"RGB raster processing failed: {str(e)}") from e
 
 
-def download_rasterdata_rgbn(request: DataRequest, state: DownloadState, raster_data: pd.Series) -> pd.Series:
+def download_rasterdata_rgbn(tile_state: RDownloadState, config: RConfigManager, raster_data: pd.Series) -> pd.Series:
     """
     Download and process RGBN (RGB + Near Infrared) raster data.
 
@@ -221,21 +263,197 @@ def download_rasterdata_rgbn(request: DataRequest, state: DownloadState, raster_
     """
     try:
 
-        overview_level = VALID_OVERVIEWS[request.pixel_size]
+        overview_level = VALID_OVERVIEWS[config.pixel_size]
 
-        process_rgbn_raster(
-            rgb_path=raster_data["RGB_raster"],
-            nir_path=raster_data["NIR_raster"],
-            request=request,
-            point=(request.lon, request.lat),
-            overview_level=overview_level,
-            state=state
-        )
+        point = (config.lon, config.lat)
+        raster_hw = config.shape[1]  # assumption raster is squaRe
+
+        # process_rgbn_raster(
+        #     rgb_path=raster_data["RGB_raster"],
+        #     nir_path=raster_data["NIR_raster"],
+        #     request=request,
+        #     point=(request.lon, request.lat),
+        #     overview_level=overview_level,
+        #     state=state
+        # )
+
+        with rio.open(raster_data["RGB_raster"], overview_level=overview_level) as src_rgb:
+            window, profile = prepare_raster_window(src_rgb, point, config)
+            data_rgb = src_rgb.read(window=window)
+
+            with rio.open(raster_data["NIR_raster"], overview_level=overview_level) as src_nir:
+                data_nir = src_nir.read(window=window)
+                data_total = np.concatenate([data_rgb, data_nir], axis=0)
+
+                # If the data is not already of shape of the blocksize, pad it
+                data_total = pad_tensor(data_total, href=profile["height"], wref=profile["width"],
+                                        nodata_method=config.nodata_mode)
+
+                # resample and resize
+                if config.resample_size is not None:
+                    data_total = np.array([
+                        cv2.resize(data_total[channel], (raster_hw, raster_hw),
+                                   interpolation=cv2.INTER_LINEAR)
+                        for channel in range(data_total.shape[0])
+                    ])
+
+                    # change window: height and width
+                    window = Window(window.col_off, window.row_off, raster_hw, raster_hw)
+
+                    # Scale factor: 1 / (old pixel size  / new pixel size) -> division as Affine doesnt accept division
+                    scale_factor = 1 / (src_rgb.transform[0] / config.resample_size)
+
+                    # calculate neW trafo based on new window
+                    new_transform = rio.windows.transform(window, src_rgb.transform)
+                    trafo = new_transform * new_transform.scale(scale_factor, scale_factor)
+
+                    # update profiler
+                    profile.update({
+                        'height': raster_hw,
+                        'width': raster_hw
+                    })
+                else:
+                    # define normal transformation here (no upsampling done)
+                    trafo = rio.windows.transform(window, src_rgb.transform)
+
+                if data_total is None:
+                    # creation option for nodata is on remove
+                    tile_state.set_raster_failed()
+                    print(
+                        f'Removed raster {config.outpath} as NoData values were contained and nodata_mode={config.nodata_mode}')
+                else:
+                    tile_state.set_raster_successful()
+                    profile.update({'count': 4, 'nodata': config.nodata_value})
+                    save_raster_data(
+                        data=data_total,
+                        profile=profile,
+                        config=config,
+                        transform=trafo
+                    )
 
         return raster_data
 
     except Exception as e:
         raise IOError(f"RGBN raster processing failed: {str(e)}") from e
+
+# def process_rgb_raster(
+#         raster_path: str,
+#         request: DataRequest,
+#         point: Coordinates,
+#         overview_level: int,
+#         state: DownloadState
+# ) -> None:
+#     """Process and save RGB raster data."""
+#     with rio.open(raster_path, overview_level=overview_level) as src:
+#         window, profile = prepare_raster_window(src, point, request)
+#         data = src.read(window=window)
+#
+#         # If the data is not already of shape of the blocksize, pad it
+#         data = pad_tensor(data, href=profile["height"], wref=profile["width"], nodata_method=request.nodata_mode)
+#
+#         if request.resample_size is not None:
+#             data = np.array([
+#                 cv2.resize(data[channel], (request.shape[1], request.shape[2]), interpolation=cv2.INTER_LINEAR)
+#                 for channel in range(data.shape[0])
+#             ])
+#
+#             # change window: height and width
+#             window = Window(window.col_off, window.row_off, request.shape[1], request.shape[2])
+#
+#             # Scale factor: 1 / (old pixel size  / new pixel size) -> division as Affine doesnt accept division
+#             scale_factor = 1 / (src.transform[0] / request.resample_size)
+#
+#             # calculate neW trafo based on new window
+#             new_transform = rio.windows.transform(window, src.transform)
+#             trafo = new_transform * new_transform.scale(scale_factor, scale_factor)
+#
+#             # update profiler
+#             profile.update({
+#                 'height': request.shape[1],
+#                 'width': request.shape[2]
+#             })
+#         else:
+#             # define normal transformation here (no upsampling done)
+#             trafo = rio.windows.transform(window, src.transform)
+#
+#         if data is None:
+#             # creation option for nodata is on remove
+#             state.set_raster_failed()
+#             print(
+#                 f'Skipping raster {request.outpath} as NoData values were contained and nodata_mode={request.nodata_mode}')
+#         else:
+#             state.set_raster_successful()
+#             profile.update({'nodata': request.nodata_value})
+#             save_raster_data(
+#                 data=data,
+#                 profile=profile,
+#                 request=request,
+#                 transform=trafo
+#             )
+
+
+# def process_rgbn_raster(
+#         rgb_path: str,
+#         nir_path: str,
+#         request: DataRequest,
+#         point: Coordinates,
+#         overview_level: int,
+#         state: DownloadState
+# ) -> None:
+#     """Process and save RGBN raster data."""
+#     with rio.open(rgb_path, overview_level=overview_level) as src_rgb:
+#         window, profile = prepare_raster_window(src_rgb, point, request)
+#         data_rgb = src_rgb.read(window=window)
+#
+#         with rio.open(nir_path, overview_level=overview_level) as src_nir:
+#             data_nir = src_nir.read(window=window)
+#             data_total = np.concatenate([data_rgb, data_nir], axis=0)
+#
+#             # If the data is not already of shape of the blocksize, pad it
+#             data_total = pad_tensor(data_total, href=profile["height"], wref=profile["width"],
+#                                     nodata_method=request.nodata_mode)
+#
+#             # resample and resize
+#             if request.resample_size is not None:
+#                 data_total = np.array([
+#                     cv2.resize(data_total[channel], (request.shape[1], request.shape[2]),
+#                                interpolation=cv2.INTER_LINEAR)
+#                     for channel in range(data_total.shape[0])
+#                 ])
+#
+#                 # change window: height and width
+#                 window = Window(window.col_off, window.row_off, request.shape[1], request.shape[2])
+#
+#                 # Scale factor: 1 / (old pixel size  / new pixel size) -> division as Affine doesnt accept division
+#                 scale_factor = 1 / (src_rgb.transform[0] / request.resample_size)
+#
+#                 # calculate neW trafo based on new window
+#                 new_transform = rio.windows.transform(window, src_rgb.transform)
+#                 trafo = new_transform * new_transform.scale(scale_factor, scale_factor)
+#
+#                 # update profiler
+#                 profile.update({
+#                     'height': request.shape[1],
+#                     'width': request.shape[2]
+#                 })
+#             else:
+#                 # define normal transformation here (no upsampling done)
+#                 trafo = rio.windows.transform(window, src_rgb.transform)
+#
+#             if data_total is None:
+#                 # creation option for nodata is on remove
+#                 state.set_raster_failed()
+#                 print(
+#                     f'Removed raster {request.outpath} as NoData values were contained and nodata_mode={request.nodata_mode}')
+#             else:
+#                 state.set_raster_successful()
+#                 profile.update({'count': 4, 'nodata': request.nodata_value})
+#                 save_raster_data(
+#                     data=data_total,
+#                     profile=profile,
+#                     request=request,
+#                     transform=trafo
+#                 )
 
 
 # Helper functions
@@ -281,8 +499,8 @@ def calculate_bbox(
 def process_vector_data(
         vector_url: str,
         bbox: BoundingBox,
-        request: DataRequest,
-        state: DownloadState
+        config: RConfigManager,
+        tile_state: RDownloadState
 ) -> None:
     """Process and save vector data within the specified bounding box."""
     with fiona.open(vector_url, layer="NFL") as src:
@@ -290,39 +508,39 @@ def process_vector_data(
         filtered_features = [
             {"geometry": shape(feat["geometry"])}
                 for feat in src.filter(bbox=bbox)
-                    if feat["properties"].get("NS") in request.mask_label
+                    if feat["properties"].get("NS") in config.mask_label
         ]
 
         # add number of objects to state managEr
-        state.num_items = len(filtered_features)
+        tile_state.num_items = len(filtered_features)
 
         # Objects ahve been found and will be transformed into raster
         if len(filtered_features) > 0:
             gdf = gpd.GeoDataFrame(filtered_features, crs=src.crs)
 
             # Rasterize the geometries into the raster
-            with rio.open(request.outpath / f"input_{request.id}.tif") as img_src:
+            with rio.open(config.outpath / f"input_{config.id}.tif") as img_src:
                 # convert geoemtries to raster specific crs
                 gdf.to_crs(crs=img_src.crs, inplace=True)
 
                 # if requested provide transformed vector file
-                if request.create_gpkg:
-                    gdf.to_file(request.outpath / f"target_{request.id}.gpkg", driver='GPKG', layer='NFL')
+                if config.create_gpkg:
+                    gdf.to_file(config.outpath / f"target_{config.id}.gpkg", driver='GPKG', layer='NFL')
                 shapes = [(geom, 1) for geom in gdf.geometry]  # Assign value 1 to features
-                binary_raster = rasterize(shapes, out_shape=request.shape[1:], transform=img_src.transform,
+                binary_raster = rasterize(shapes, out_shape=config.shape[1:], transform=img_src.transform,
                                           fill=0)
 
                 set_pixels = np.count_nonzero(binary_raster == 1)
-                psize = request.pixel_size if request.resample_size is not None else request.resample_size
-                state.area_items = round(psize**2 * set_pixels, 2)
+                psize = config.pixel_size if config.resample_size is not None else config.resample_size
+                tile_state.area_items = round(psize**2 * set_pixels, 2)
 
                 # Save the rasterized binary image
                 with rio.open(
-                        fp=request.outpath / f"target_{request.id}.tif",
+                        fp=config.outpath / f"target_{config.id}.tif",
                         mode="w+",
                         driver="GTiff",
-                        height=request.shape[1],
-                        width=request.shape[1],
+                        height=config.shape[1],
+                        width=config.shape[1],
                         count=1,
                         dtype=np.uint8,
                         crs=img_src.crs,
@@ -331,17 +549,17 @@ def process_vector_data(
                     dst.write(binary_raster, 1)
         # write empty image
         else:
-            print(f'    No results for class {request.mask_label} at lat: {request.lat} // lon: {request.lon}')
-            with rio.open(request.outpath / f"input_{request.id}.tif") as img_src:
-                binary_raster = np.zeros((request.shape[1], request.shape[1]), dtype=np.uint8)
+            print(f'    No results for class {config.mask_label} at lat: {config.lat} // lon: {config.lon}')
+            with rio.open(config.outpath / f"input_{config.id}.tif") as img_src:
+                binary_raster = np.zeros((config.shape[1], config.shape[1]), dtype=np.uint8)
 
                 # Save the rasterized binary image
                 with rio.open(
-                        fp=request.outpath / f"target_{request.id}.tif",
+                        fp=config.outpath / f"target_{config.id}.tif",
                         mode="w+",
                         driver="GTiff",
-                        height=request.shape[1],
-                        width=request.shape[1],
+                        height=config.shape[1],
+                        width=config.shape[1],
                         count=1,
                         dtype=np.uint8,
                         crs=img_src.crs,
@@ -351,130 +569,10 @@ def process_vector_data(
     return
 
 
-def process_rgb_raster(
-        raster_path: str,
-        request: DataRequest,
-        point: Coordinates,
-        overview_level: int,
-        state: DownloadState
-) -> None:
-    """Process and save RGB raster data."""
-    with rio.open(raster_path, overview_level=overview_level) as src:
-        window, profile = prepare_raster_window(src, point, request)
-        data = src.read(window=window)
-
-        # If the data is not already of shape of the blocksize, pad it
-        data = pad_tensor(data, href=profile["height"], wref=profile["width"], nodata_method=request.nodata_mode)
-
-        if request.resample_size is not None:
-            data = np.array([
-                cv2.resize(data[channel], (request.shape[1], request.shape[2]), interpolation=cv2.INTER_LINEAR)
-                for channel in range(data.shape[0])
-            ])
-
-            # change window: height and width
-            window = Window(window.col_off, window.row_off, request.shape[1], request.shape[2])
-
-            # Scale factor: 1 / (old pixel size  / new pixel size) -> division as Affine doesnt accept division
-            scale_factor = 1 / (src.transform[0] / request.resample_size)
-
-            # calculate neW trafo based on new window
-            new_transform = rio.windows.transform(window, src.transform)
-            trafo = new_transform * new_transform.scale(scale_factor, scale_factor)
-
-            # update profiler
-            profile.update({
-                'height': request.shape[1],
-                'width': request.shape[2]
-            })
-        else:
-            # define normal transformation here (no upsampling done)
-            trafo = rio.windows.transform(window, src.transform)
-
-        if data is None:
-            # creation option for nodata is on remove
-            state.set_raster_failed()
-            print(
-                f'Skipping raster {request.outpath} as NoData values were contained and nodata_mode={request.nodata_mode}')
-        else:
-            state.set_raster_successful()
-            profile.update({'nodata': request.nodata_value})
-            save_raster_data(
-                data=data,
-                profile=profile,
-                request=request,
-                transform=trafo
-            )
-
-
-def process_rgbn_raster(
-        rgb_path: str,
-        nir_path: str,
-        request: DataRequest,
-        point: Coordinates,
-        overview_level: int,
-        state: DownloadState
-) -> None:
-    """Process and save RGBN raster data."""
-    with rio.open(rgb_path, overview_level=overview_level) as src_rgb:
-        window, profile = prepare_raster_window(src_rgb, point, request)
-        data_rgb = src_rgb.read(window=window)
-
-        with rio.open(nir_path, overview_level=overview_level) as src_nir:
-            data_nir = src_nir.read(window=window)
-            data_total = np.concatenate([data_rgb, data_nir], axis=0)
-
-            # If the data is not already of shape of the blocksize, pad it
-            data_total = pad_tensor(data_total, href=profile["height"], wref=profile["width"],
-                                    nodata_method=request.nodata_mode)
-
-            # resample and resize
-            if request.resample_size is not None:
-                data_total = np.array([
-                    cv2.resize(data_total[channel], (request.shape[1], request.shape[2]),
-                               interpolation=cv2.INTER_LINEAR)
-                    for channel in range(data_total.shape[0])
-                ])
-
-                # change window: height and width
-                window = Window(window.col_off, window.row_off, request.shape[1], request.shape[2])
-
-                # Scale factor: 1 / (old pixel size  / new pixel size) -> division as Affine doesnt accept division
-                scale_factor = 1 / (src_rgb.transform[0] / request.resample_size)
-
-                # calculate neW trafo based on new window
-                new_transform = rio.windows.transform(window, src_rgb.transform)
-                trafo = new_transform * new_transform.scale(scale_factor, scale_factor)
-
-                # update profiler
-                profile.update({
-                    'height': request.shape[1],
-                    'width': request.shape[2]
-                })
-            else:
-                # define normal transformation here (no upsampling done)
-                trafo = rio.windows.transform(window, src_rgb.transform)
-
-            if data_total is None:
-                # creation option for nodata is on remove
-                state.set_raster_failed()
-                print(
-                    f'Removed raster {request.outpath} as NoData values were contained and nodata_mode={request.nodata_mode}')
-            else:
-                state.set_raster_successful()
-                profile.update({'count': 4, 'nodata': request.nodata_value})
-                save_raster_data(
-                    data=data_total,
-                    profile=profile,
-                    request=request,
-                    transform=trafo
-                )
-
-
 def prepare_raster_window(
         src: rio.DatasetReader,
         point: Coordinates,
-        request: DataRequest
+        config: RConfigManager
 ) -> Tuple[Window, Dict]:
     """Prepare raster window and profile for data extraction."""
     point_raster = transform_coordinates(
@@ -486,11 +584,11 @@ def prepare_raster_window(
     # if request.resample_size is not None:
     y, x = src.index(*point_raster)
 
-    h, w = request.shape[1:]
-    if request.resample_size is not None:
+    h, w = config.shape[1:]
+    if config.resample_size is not None:
         # reshape Windpow for inceades coverage area
-        scaling_factor = request.resample_size / request.pixel_size
-        adjusted_window_size = int(request.shape[1] * scaling_factor)
+        scaling_factor = config.resample_size / config.pixel_size
+        adjusted_window_size = int(config.shape[1] * scaling_factor)
         window = Window(
             x - adjusted_window_size // 2,  # Start column (x)
             y - adjusted_window_size // 2,  # Start row (y)
@@ -500,10 +598,10 @@ def prepare_raster_window(
         h, w = adjusted_window_size, adjusted_window_size
     else:
         window = Window(
-            x - request.shape[2] // 2,
-            y - request.shape[1] // 2,
-            request.shape[2],
-            request.shape[1]
+            x - config.shape[2] // 2,
+            y - config.shape[1] // 2,
+            config.shape[2],
+            config.shape[1]
         )
 
     profile = src.profile.copy()
@@ -521,7 +619,7 @@ def prepare_raster_window(
 def save_raster_data(
         data: np.ndarray,
         profile: Dict,
-        request: DataRequest,
+        config: RConfigManager,
         transform: rio.Affine
 ) -> None:
     """Save raster data to disk."""
@@ -533,7 +631,7 @@ def save_raster_data(
         'blockysize': 256
     })
 
-    output_path = request.outpath / f"input_{request.id}.tif"
+    output_path = config.outpath / f"input_{config.id}.tif"
     with rio.open(output_path, "w", **profile) as dst:
         dst.write(data)
 
