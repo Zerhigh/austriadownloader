@@ -6,15 +6,9 @@ from typing import Dict, Tuple
 import pandas as pd
 from pydantic import BaseModel, field_validator
 
+from multiprocessing import Pool, Manager
 import austriadownloader
 from austriadownloader.configmanager import RConfigManager
-
-pathlib.Path("demo/").mkdir(parents=True, exist_ok=True)
-pathlib.Path("demo/stratification_output/").mkdir(parents=True, exist_ok=True)
-
-
-# def validate_id(value: str | int) -> str:
-#     return str(value) if isinstance(value, int) else value
 
 
 class RDownloadManager:
@@ -69,8 +63,35 @@ class RDownloadManager:
 
         return
 
-    def download_parallel(self):
+    def _parallel(self, row):
+        tile_state = RDownloadState(id=row.id, lat=row.lat, lon=row.lon)
 
+        # if file is already downloaded, skip it
+        if os.path.exists(f'{self.config.outpath}/input_{tile_state.id}.tif') and os.path.exists(
+                f'{self.config.outpath}/target_{tile_state}.tif'):
+            return tile_state.id, None
+
+        download = austriadownloader.download(tile_state, self.config, verbose=False)
+
+        return download.id, download.get_state()
+
+    def download_parallel(self):
+        if self.tiles is None:
+            raise ValueError('Error: Download Data was not loaded.')
+        # Extract rows as dictionaries for easier parallel processing
+        rows = [row for _, row in self.tiles[:10].iterrows()]
+
+        with Pool(processes=os.cpu_count()) as pool:
+            results = pool.map(self._parallel, rows)
+
+            # Update manager state after parallel processing
+
+        for tile_id, state in results:
+            if state:  # If state is not None, update the manager
+                self.state.loc[tile_id] = state
+
+        # Save the state log
+        self.state.to_csv(f'{self.config.outpath}/statelog.csv', index=False)
         return
 
 
