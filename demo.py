@@ -2,7 +2,7 @@ import os.path
 import pathlib
 import pandas as pd
 from tqdm import tqdm
-from austriadownloader.downloadstate import DownloadManager
+# from austriadownloader.downloadstate import DownloadManager
 import austriadownloader
 
 from multiprocessing import Pool, Manager
@@ -52,55 +52,55 @@ dem = pd.DataFrame([{'id': 'id_01', 'lat': 48.40086407732648, 'lon': 15.58510315
 # op = 'demo/stratification_output/'
 
 
-def download_tile(row):
-    op = 'demo/stratification_output/'
-    code = 41
+# def download_tile(row):
+#     op = 'demo/stratification_output/'
+#     code = 41
+#
+#     request = austriadownloader.DataRequest(
+#         id=row.id,
+#         lat=row.lat,
+#         lon=row.lon,
+#         pixel_size=1.6,
+#         resample_size=2.5,
+#         shape=(4, 512, 512),  # for RGB just use (3, 1024, 1024)
+#         outpath=f"{op}",
+#         mask_label=code,  # Base: Buildings
+#         create_gpkg=False,
+#         nodata_mode='flag',  # or 'remove',
+#     )
+#
+#     # Skip if the file already exists
+#     if os.path.exists(f'{op}/input_{request.id}.tif') and os.path.exists(f'{op}/target_{request.id}.tif'):
+#         return request.id, None  # Skip processing
+#
+#     download = austriadownloader.download(request, verbose=False)
+#
+#     return download.id, download.get_state()
+#
+#
+# def main():
+#     manager = DownloadManager(file_path='sample_even_download.csv')
+#
+#     op = 'demo/stratification_output/'
+#
+#     # Extract rows as dictionaries for easier parallel processing
+#     rows = [row for _, row in manager.tiles[:10].iterrows()]
+#
+#     with Pool(processes=os.cpu_count()) as pool:
+#         results = pool.map(download_tile, rows)
+#
+#         # Update manager state after parallel processing
+#
+#     for tile_id, state in results:
+#         if state:  # If state is not None, update the manager
+#             manager.state.loc[tile_id] = state
+#
+#     # Save the state log
+#     manager.state.to_csv(f'{op}/statelog.csv', index=False)
 
-    request = austriadownloader.DataRequest(
-        id=row.id,
-        lat=row.lat,
-        lon=row.lon,
-        pixel_size=1.6,
-        resample_size=2.5,
-        shape=(4, 512, 512),  # for RGB just use (3, 1024, 1024)
-        outpath=f"{op}",
-        mask_label=code,  # Base: Buildings
-        create_gpkg=False,
-        nodata_mode='flag',  # or 'remove',
-    )
 
-    # Skip if the file already exists
-    if os.path.exists(f'{op}/input_{request.id}.tif') and os.path.exists(f'{op}/target_{request.id}.tif'):
-        return request.id, None  # Skip processing
-
-    download = austriadownloader.download(request, verbose=False)
-
-    return download.id, download.get_state()
-
-
-def main():
-    manager = DownloadManager(file_path='sample_even_download.csv')
-
-    op = 'demo/stratification_output/'
-
-    # Extract rows as dictionaries for easier parallel processing
-    rows = [row for _, row in manager.tiles[:10].iterrows()]
-
-    with Pool(processes=os.cpu_count()) as pool:
-        results = pool.map(download_tile, rows)
-
-        # Update manager state after parallel processing
-
-    for tile_id, state in results:
-        if state:  # If state is not None, update the manager
-            manager.state.loc[tile_id] = state
-
-    # Save the state log
-    manager.state.to_csv(f'{op}/statelog.csv', index=False)
-
-
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
 # for i, row in manager.tiles.iterrows():
 #     request = austriadownloader.DataRequest(
 #         id=row.id,

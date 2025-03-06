@@ -1,12 +1,11 @@
 # Parent class: DownloadManager (Manages the overall download process)
 import os
-import pathlib
-from typing import Dict, Tuple
-
 import pandas as pd
-from pydantic import BaseModel, field_validator
 
-from multiprocessing import Pool, Manager
+from typing import Dict, Tuple
+from pydantic import BaseModel, field_validator
+from multiprocessing import Pool
+
 import austriadownloader
 from austriadownloader.configmanager import RConfigManager
 
@@ -84,8 +83,7 @@ class RDownloadManager:
         with Pool(processes=os.cpu_count()) as pool:
             results = pool.map(self._parallel, rows)
 
-            # Update manager state after parallel processing
-
+        # Update manager state after parallel processing
         for tile_id, state in results:
             if state:  # If state is not None, update the manager
                 self.state.loc[tile_id] = state
