@@ -1,0 +1,11 @@
+data_path: "C:/Users/PC/Coding/GeoQuery/sample_even_download.csv"
+pixel_size: 1.6
+resample_size: 2.5
+shape: [4, 512, 512]
+outpath: "C:/Users/PC/Coding/GeoQuery/demo/rewrite_sequential/"
+download_method: 'sequential'
+mask_label: [41]
+create_gpkg: false
+nodata_mode: "flag"
+nodata_value: 0
+verbose: True
