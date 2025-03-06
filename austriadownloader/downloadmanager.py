@@ -23,24 +23,6 @@ class DownloadManager(BaseModel):
         arbitrary_types_allowed = True  # Allows using non-Pydantic types like pd.DataFrame
         frozen = False  # Allows modifying attributes after initialization
 
-    # def __init__(self, config: ConfigManager, cols: Tuple[str] = ('id', 'aerial', 'cadster', 'num_items', 'area_items')):
-    #     """
-    #     Initialize the DownloadManager.
-    #     If a file path is provided, it will automatically load the tile list from the file.
-    #     """
-    #     self.tiles = None
-    #     self.config = config
-    #
-    #     self.state: pd.DataFrame = pd.DataFrame(columns=cols)
-    #     self.load_datafile(config.data_path)
-    #
-    # def load_datafile(self, file_path):
-    #     try:
-    #         self.tiles = pd.read_csv(file_path)
-    #         print(f"Successfully loaded {len(self.tiles)} tiles from {file_path}.")
-    #     except Exception as e:
-    #         print(f"Error loading file: {e}")
-
     def start_download(self):
         try:
             if self.config.download_method == 'sequential':
