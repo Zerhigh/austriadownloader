@@ -17,7 +17,7 @@ class DownloadManager(BaseModel):
     cols: Tuple[str, ...] = ('id', 'aerial', 'cadster', 'num_items', 'area_items')
     tiles: Optional[pd.DataFrame] = AUSTRIA_SAMPLING
     state: pd.DataFrame = Field(
-        default_factory=lambda: pd.DataFrame(columns=('id', 'aerial', 'cadster', 'num_items', 'area_items')))
+        default_factory=lambda: pd.DataFrame(columns=('id', 'aerial', 'cadster', 'num_items', 'area_items', 'contains_nodata')))
 
     class Config:
         arbitrary_types_allowed = True  # Allows using non-Pydantic types like pd.DataFrame

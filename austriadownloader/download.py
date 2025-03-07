@@ -196,32 +196,7 @@ def download_rasterdata_rgb(tile_state: DownloadState, config: ConfigManager, ra
             data = src.read(window=window)
 
             # If the data is not already of shape of the blocksize, pad it
-            data = pad_tensor(data, href=profile["height"], wref=profile["width"], nodata_method=config.nodata_mode)
-
-            if config.resample_size is not None:
-                data = np.array([
-                    cv2.resize(data[channel], (raster_hw, raster_hw), interpolation=cv2.INTER_LINEAR)
-                    for channel in range(data.shape[0])
-                ])
-
-                # change window: height and width
-                window = Window(window.col_off, window.row_off, raster_hw, raster_hw)
-
-                # Scale factor: 1 / (old pixel size  / new pixel size) -> division as Affine doesnt accept division
-                scale_factor = 1 / (src.transform[0] / config.resample_size)
-
-                # calculate neW trafo based on new window
-                new_transform = rio.windows.transform(window, src.transform)
-                trafo = new_transform * new_transform.scale(scale_factor, scale_factor)
-
-                # update profiler
-                profile.update({
-                    'height': raster_hw,
-                    'width': raster_hw
-                })
-            else:
-                # define normal transformation here (no upsampling done)
-                trafo = rio.windows.transform(window, src.transform)
+            data = pad_tensor(data, tile_state, href=profile["height"], wref=profile["width"], nodata_method=config.nodata_mode)
 
             if data is None:
                 # creation option for nodata is on remove
@@ -229,6 +204,32 @@ def download_rasterdata_rgb(tile_state: DownloadState, config: ConfigManager, ra
                 print(
                     f'Skipping raster {config.outpath} as NoData values were contained and nodata_mode={config.nodata_mode}')
             else:
+                # apply resampling
+                if config.resample_size is not None:
+                    data = np.array([
+                        cv2.resize(data[channel], (raster_hw, raster_hw), interpolation=cv2.INTER_LINEAR)
+                        for channel in range(data.shape[0])
+                    ])
+
+                    # change window: height and width
+                    window = Window(window.col_off, window.row_off, raster_hw, raster_hw)
+
+                    # Scale factor: 1 / (old pixel size  / new pixel size) -> division as Affine doesnt accept division
+                    scale_factor = 1 / (src.transform[0] / config.resample_size)
+
+                    # calculate neW trafo based on new window
+                    new_transform = rio.windows.transform(window, src.transform)
+                    trafo = new_transform * new_transform.scale(scale_factor, scale_factor)
+
+                    # update profiler
+                    profile.update({
+                        'height': raster_hw,
+                        'width': raster_hw
+                    })
+                else:
+                    # define normal transformation here (no upsampling done)
+                    trafo = rio.windows.transform(window, src.transform)
+
                 tile_state.set_raster_successful()
                 profile.update({'nodata': config.nodata_value})
                 save_raster_data(
@@ -277,35 +278,8 @@ def download_rasterdata_rgbn(tile_state: DownloadState, config: ConfigManager, r
                 data_total = np.concatenate([data_rgb, data_nir], axis=0)
 
                 # If the data is not already of shape of the blocksize, pad it
-                data_total = pad_tensor(data_total, href=profile["height"], wref=profile["width"],
+                data_total = pad_tensor(data_total, tile_state, href=profile["height"], wref=profile["width"],
                                         nodata_method=config.nodata_mode)
-
-                # resample and resize
-                if config.resample_size is not None:
-                    data_total = np.array([
-                        cv2.resize(data_total[channel], (raster_hw, raster_hw),
-                                   interpolation=cv2.INTER_LINEAR)
-                        for channel in range(data_total.shape[0])
-                    ])
-
-                    # change window: height and width
-                    window = Window(window.col_off, window.row_off, raster_hw, raster_hw)
-
-                    # Scale factor: 1 / (old pixel size  / new pixel size) -> division as Affine doesnt accept division
-                    scale_factor = 1 / (src_rgb.transform[0] / config.resample_size)
-
-                    # calculate neW trafo based on new window
-                    new_transform = rio.windows.transform(window, src_rgb.transform)
-                    trafo = new_transform * new_transform.scale(scale_factor, scale_factor)
-
-                    # update profiler
-                    profile.update({
-                        'height': raster_hw,
-                        'width': raster_hw
-                    })
-                else:
-                    # define normal transformation here (no upsampling done)
-                    trafo = rio.windows.transform(window, src_rgb.transform)
 
                 if data_total is None:
                     # creation option for nodata is on remove
@@ -313,6 +287,33 @@ def download_rasterdata_rgbn(tile_state: DownloadState, config: ConfigManager, r
                     print(
                         f'Removed raster {config.outpath} as NoData values were contained and nodata_mode={config.nodata_mode}')
                 else:
+                    # resample and resize
+                    if config.resample_size is not None:
+                        data_total = np.array([
+                            cv2.resize(data_total[channel], (raster_hw, raster_hw),
+                                       interpolation=cv2.INTER_LINEAR)
+                            for channel in range(data_total.shape[0])
+                        ])
+
+                        # change window: height and width
+                        window = Window(window.col_off, window.row_off, raster_hw, raster_hw)
+
+                        # Scale factor: 1 / (old pixel size  / new pixel size) -> division as Affine doesnt accept division
+                        scale_factor = 1 / (src_rgb.transform[0] / config.resample_size)
+
+                        # calculate neW trafo based on new window
+                        new_transform = rio.windows.transform(window, src_rgb.transform)
+                        trafo = new_transform * new_transform.scale(scale_factor, scale_factor)
+
+                        # update profiler
+                        profile.update({
+                            'height': raster_hw,
+                            'width': raster_hw
+                        })
+                    else:
+                        # define normal transformation here (no upsampling done)
+                        trafo = rio.windows.transform(window, src_rgb.transform)
+
                     tile_state.set_raster_successful()
                     profile.update({'count': 4, 'nodata': config.nodata_value})
                     save_raster_data(
@@ -396,6 +397,7 @@ def process_vector_data(
             gdf = gpd.GeoDataFrame(filtered_features, crs=src.crs)
 
             # Rasterize the geometries into the raster
+            # change this and add the info to the state_manager
             with rio.open(config.outpath / f"{config.outfile_prefixes['raster']}_{tile_state.id}.tif") as img_src:
                 # convert geoemtries to raster specific crs
                 gdf.to_crs(crs=img_src.crs, inplace=True)
@@ -407,9 +409,11 @@ def process_vector_data(
                 binary_raster = rasterize(shapes, out_shape=config.shape[1:], transform=img_src.transform,
                                           fill=0)
 
+                # add the pixel number to state manager
                 set_pixels = np.count_nonzero(binary_raster == 1)
-                psize = config.pixel_size if config.resample_size is None else config.resample_size
-                tile_state.area_items = round(psize**2 * set_pixels, 2)
+                tile_state.set_pixels = set_pixels
+                # psize = config.pixel_size if config.resample_size is None else config.resample_size
+                #tile_state.area_items = round(psize**2 * set_pixels, 2)
 
                 # Save the rasterized binary image
                 with rio.open(
@@ -514,12 +518,13 @@ def save_raster_data(
         dst.write(data)
 
 
-def pad_tensor(data: np.ndarray, href: int = 512, wref: int = 512, nodata_method: str = 'flag') -> Optional[np.ndarray]:
+def pad_tensor(data: np.ndarray, tile_state: DownloadState, href: int = 512, wref: int = 512, nodata_method: str = 'flag') -> Optional[np.ndarray]:
     """
     Pads a (3, H, W) tensor to (3, href, wref) by filling with zeros.
 
     Args:
         :param data: Input tensor of shape (3, H, W).
+        :param tile_state: state
         :param nodata_method: Either 'flag' or 'remove'
         :param href: Padding image size.
         :param wref: Padding image size.
@@ -536,6 +541,8 @@ def pad_tensor(data: np.ndarray, href: int = 512, wref: int = 512, nodata_method
     if nodata_method == 'flag':
         print(f'Queryied window contains NoData values, set to: 0')
 
+        tile_state.contains_nodata = True
+
         # Create a zero-filled array of the target shape
         padded = np.zeros((c, href, wref), dtype=data.dtype)
 
@@ -544,4 +551,5 @@ def pad_tensor(data: np.ndarray, href: int = 512, wref: int = 512, nodata_method
 
         return padded
     elif nodata_method == 'remove':
+        tile_state.contains_nodata = True
         return None

@@ -1,4 +1,6 @@
 from typing import Dict
+
+import rasterio.transform
 from pydantic import BaseModel, field_validator
 
 
@@ -6,10 +8,15 @@ class DownloadState(BaseModel):
     id: str | int | float
     lat: float
     lon: float
+    contains_nodata: bool = False
     raster_download_success: bool = False
     vector_download_success: bool = False
     num_items: int = 0
-    area_items: float = 0.0
+    set_pixels: int = 0
+
+    # add params to laod and define transform and crs of raster to save later loading time
+    # to_crs: int
+    # raster_transform: rasterio.transform.Affine
 
     class Config:
         # This ensures that the model is mutable after initialization (default behavior)
@@ -27,7 +34,8 @@ class DownloadState(BaseModel):
             'aerial': self.raster_download_success,
             'cadster': self.vector_download_success,
             'num_items': self.num_items,
-            'area_items': self.area_items
+            'area_items': self.set_pixels,
+            'contains_nodata': self.contains_nodata
         }
 
     def set_raster_failed(self):
