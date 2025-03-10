@@ -39,6 +39,7 @@ if __name__ == "__main__":
     manager = DownloadManager(config=ConfigManager.from_config_file(config_path))
     manager.start_download()
 
+
     end_time = time.time()
 
     print(f'Download took: {round(end_time - start_time, 2)}')
