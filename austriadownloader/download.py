@@ -146,10 +146,16 @@ def download_vector(tile_state: DownloadState, config: ConfigManager, point_plan
         if config.resample_size is not None:
             bbox_pixel_size = config.resample_size
 
+        # increase bbox for access sampling due to transformation
+        query_shape = list(config.shape[1:])
+        if config.from_geotransform:
+            query_shape[0] += 60
+            query_shape[1] += 60
+
         bbox = calculate_bbox(
             point_planar,
             pixel_size=bbox_pixel_size,
-            shape=config.shape[1:]
+            shape=query_shape
         )
 
         # Process and save vector data
@@ -392,61 +398,68 @@ def process_vector_data(
         # add number of objects to state managEr
         tile_state.num_items = len(filtered_features)
 
+        if config.from_geotransform:
+            transform_ = tile_state.geo_transform
+            crs_ = tile_state.geo_CRS
+        else:
+            with rio.open(config.outpath / f"{config.outfile_prefixes['raster']}_{tile_state.id}.tif") as img_src:
+                transform_ = img_src.transform
+                crs_ = img_src.crs
+
         # Objects ahve been found and will be transformed into raster
         if len(filtered_features) > 0:
             gdf = gpd.GeoDataFrame(filtered_features, crs=src.crs)
 
             # Rasterize the geometries into the raster
             # change this and add the info to the state_manager
-            with rio.open(config.outpath / f"{config.outfile_prefixes['raster']}_{tile_state.id}.tif") as img_src:
-                # convert geoemtries to raster specific crs
-                gdf.to_crs(crs=img_src.crs, inplace=True)
+            # convert geoemtries to raster specific crs
+            gdf.to_crs(crs=crs_, inplace=True)
 
-                # if requested provide transformed vector file
-                if config.create_gpkg:
-                    gdf.to_file(fp.with_suffix(".gpkg"), driver='GPKG', layer='NFL')
-                shapes = [(geom, 1) for geom in gdf.geometry]  # Assign value 1 to features
-                binary_raster = rasterize(shapes, out_shape=config.shape[1:], transform=img_src.transform,
-                                          fill=0)
+            # if requested provide transformed vector file
+            if config.create_gpkg:
+                gdf.to_file(fp.with_suffix(".gpkg"), driver='GPKG', layer='NFL')
+            shapes = [(geom, 1) for geom in gdf.geometry]  # Assign value 1 to features
+            binary_raster = rasterize(shapes, out_shape=config.shape[1:], transform=transform_,
+                                      fill=0)
 
-                # add the pixel number to state manager
-                set_pixels = np.count_nonzero(binary_raster == 1)
-                tile_state.set_pixels = set_pixels
-                # psize = config.pixel_size if config.resample_size is None else config.resample_size
-                #tile_state.area_items = round(psize**2 * set_pixels, 2)
+            # add the pixel number to state manager
+            set_pixels = np.count_nonzero(binary_raster == 1)
+            tile_state.set_pixels = set_pixels
+            # psize = config.pixel_size if config.resample_size is None else config.resample_size
+            #tile_state.area_items = round(psize**2 * set_pixels, 2)
 
-                # Save the rasterized binary image
-                with rio.open(
-                        fp=fp.with_suffix(".tif"),
-                        mode="w+",
-                        driver="GTiff",
-                        height=config.shape[1],
-                        width=config.shape[1],
-                        count=1,
-                        dtype=np.uint8,
-                        crs=img_src.crs,
-                        transform=img_src.transform
-                ) as dst:
-                    dst.write(binary_raster, 1)
+            # Save the rasterized binary image
+            with rio.open(
+                    fp=fp.with_suffix(".tif"),
+                    mode="w+",
+                    driver="GTiff",
+                    height=config.shape[1],
+                    width=config.shape[1],
+                    count=1,
+                    dtype=np.uint8,
+                    crs=crs_,
+                    transform=transform_
+            ) as dst:
+                dst.write(binary_raster, 1)
         # write empty image
         else:
             print(f'    No results for class {config.mask_label} at lat: {tile_state.lat} // lon: {tile_state.lon}')
-            with rio.open(config.outpath / f"input_{tile_state.id}.tif") as img_src:
-                binary_raster = np.zeros((config.shape[1], config.shape[1]), dtype=np.uint8)
+            # with rio.open(config.outpath / f"input_{tile_state.id}.tif") as img_src:
+            binary_raster = np.zeros((config.shape[1], config.shape[1]), dtype=np.uint8)
 
-                # Save the rasterized binary image
-                with rio.open(
-                        fp=fp.with_suffix(".tif"),
-                        mode="w+",
-                        driver="GTiff",
-                        height=config.shape[1],
-                        width=config.shape[1],
-                        count=1,
-                        dtype=np.uint8,
-                        crs=img_src.crs,
-                        transform=img_src.transform
-                ) as dst:
-                    dst.write(binary_raster, 1)
+            # Save the rasterized binary image
+            with rio.open(
+                    fp=fp.with_suffix(".tif"),
+                    mode="w+",
+                    driver="GTiff",
+                    height=config.shape[1],
+                    width=config.shape[1],
+                    count=1,
+                    dtype=np.uint8,
+                    crs=crs_,
+                    transform=transform_
+            ) as dst:
+                dst.write(binary_raster, 1)
     return
 
 
@@ -469,7 +482,7 @@ def prepare_raster_window(
     if config.resample_size is not None:
         # reshape Windpow for inceades coverage area
         scaling_factor = config.resample_size / config.pixel_size
-        adjusted_window_size = int(config.shape[1] * scaling_factor)
+        adjusted_window_size = int(h * scaling_factor)
         window = Window(
             x - adjusted_window_size // 2,  # Start column (x)
             y - adjusted_window_size // 2,  # Start row (y)
@@ -479,10 +492,10 @@ def prepare_raster_window(
         h, w = adjusted_window_size, adjusted_window_size
     else:
         window = Window(
-            x - config.shape[2] // 2,
-            y - config.shape[1] // 2,
-            config.shape[2],
-            config.shape[1]
+            x - h // 2,
+            y - w // 2,
+            h,
+            w
         )
 
     profile = src.profile.copy()

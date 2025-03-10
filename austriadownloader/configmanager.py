@@ -25,6 +25,7 @@ class ConfigManager(BaseModel):
     resample_size: float | int | None = None
     download_method: str = 'sequential'
     create_gpkg: bool = False
+    from_geotransform: bool = False
     verbose: bool = False
     nodata_mode: str = 'flag'
     nodata_value: int = 0

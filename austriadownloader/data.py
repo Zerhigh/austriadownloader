@@ -15,7 +15,7 @@ import importlib.resources
 # Constants
 RESOURCE_PACKAGE: Final[str] = "austriadownloader.austria_data"
 CADASTRAL_FILENAME: Final[str] = "matched_metadata.gpkg"
-SAMPLING_FILENAME: Final[str] = "sample_even_download.csv"
+SAMPLING_FILENAME: Final[str] = 'stratified_S2_points_wdate_filter_reduced_wgeotransform.csv' #"sample_even_download.csv"
 
 
 def load_cadastral_data() -> gpd.GeoDataFrame:

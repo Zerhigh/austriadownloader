@@ -3,6 +3,8 @@ import os
 import pandas as pd
 
 from typing import Tuple, Optional
+
+import rasterio.transform
 from pydantic import BaseModel, Field
 from multiprocessing import Pool
 
@@ -15,7 +17,7 @@ from austriadownloader.data import AUSTRIA_SAMPLING
 class DownloadManager(BaseModel):
     config: ConfigManager
     cols: Tuple[str, ...] = ('id', 'aerial', 'cadster', 'num_items', 'area_items')
-    tiles: Optional[pd.DataFrame] = AUSTRIA_SAMPLING
+    tiles: Optional[pd.DataFrame] = AUSTRIA_SAMPLING #pd.read_csv(config.data_path)#AUSTRIA_SAMPLING
     state: pd.DataFrame = Field(
         default_factory=lambda: pd.DataFrame(columns=('id', 'aerial', 'cadster', 'num_items', 'area_items', 'contains_nodata')))
 
@@ -25,6 +27,8 @@ class DownloadManager(BaseModel):
 
     def start_download(self):
         """Initiates the download process based on the specified method in the configuration."""
+        if self.config.from_geotransform:
+            assert {"A", "B", "C", "D", "E", "F", "G", "H", "I", "CRS"}.issubset(self.tiles.columns)
         try:
             if self.config.download_method == 'sequential':
                 self.download_sequential()
@@ -44,6 +48,11 @@ class DownloadManager(BaseModel):
         for i, row in self.tiles[:10].iterrows():
 
             tile_state = DownloadState(id=row.id, lat=row.lat, lon=row.lon)
+            if self.config.from_geotransform:
+                # tis requires to have geotransform parameters in your column!
+                params = [float(a) for a in [row.A, row.B, row.C, row.D, row.E, row.F]]
+                tile_state.geo_transform = rasterio.transform.Affine(*params)
+                tile_state.geo_CRS = rasterio.crs.CRS.from_string(row.CRS)
 
             # if file is already downloaded, skip it
             if os.path.exists(f'{self.config.outpath}/input_{tile_state.id}.tif') and os.path.exists(f'{self.config.outpath}/target_{tile_state}.tif'):
