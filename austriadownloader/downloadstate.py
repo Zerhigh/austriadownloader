@@ -1,6 +1,4 @@
 from typing import Dict
-
-import rasterio.transform
 from pydantic import BaseModel, field_validator
 
 

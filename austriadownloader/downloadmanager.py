@@ -2,14 +2,12 @@
 import os
 import pandas as pd
 
-from typing import Tuple, Optional, Any
+from typing import Tuple, Optional
 from pydantic import BaseModel, Field, model_validator
 from multiprocessing import Pool
 
-import austriadownloader
 from austriadownloader.configmanager import ConfigManager
 from austriadownloader.downloadstate import DownloadState
-#from austriadownloader.data import AUSTRIA_SAMPLING
 
 
 class DownloadManager(BaseModel):
