@@ -20,6 +20,7 @@ from pyproj import Transformer
 from rasterio.features import rasterize
 from rasterio.windows import Window
 from shapely.geometry import Point, shape
+from PIL import Image
 
 from austriadownloader.data import AUSTRIA_CADASTRAL
 from austriadownloader.configmanager import ConfigManager
@@ -202,8 +203,12 @@ def download_rasterdata_rgb(tile_state: DownloadState, config: ConfigManager, ra
             else:
                 # apply resampling
                 if config.resample_size is not None:
+                    # data = np.array([
+                    #     cv2.resize(data[channel], (raster_hw, raster_hw), interpolation=cv2.INTER_LINEAR)
+                    #     for channel in range(data.shape[0])
+                    # ])
                     data = np.array([
-                        cv2.resize(data[channel], (raster_hw, raster_hw), interpolation=cv2.INTER_LINEAR)
+                        Image.fromarray(data[channel]).resize(size=(raster_hw, raster_hw), resample=Image.Resampling.LANCZOS)
                         for channel in range(data.shape[0])
                     ])
 
@@ -285,9 +290,13 @@ def download_rasterdata_rgbn(tile_state: DownloadState, config: ConfigManager, r
                 else:
                     # resample and resize
                     if config.resample_size is not None:
+                        # data_total = np.array([
+                        #     cv2.resize(data_total[channel], (raster_hw, raster_hw),
+                        #                interpolation=cv2.INTER_LINEAR)
+                        #     for channel in range(data_total.shape[0])
+                        # ])
                         data_total = np.array([
-                            cv2.resize(data_total[channel], (raster_hw, raster_hw),
-                                       interpolation=cv2.INTER_LINEAR)
+                            Image.fromarray(data_total[channel]).resize(size=(raster_hw, raster_hw), resample=Image.Resampling.LANCZOS)
                             for channel in range(data_total.shape[0])
                         ])
 

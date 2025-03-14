@@ -2,7 +2,7 @@ data_path: "C:/Users/PC/Desktop/TU/Master/MasterThesis/data/download_data/strati
 pixel_size: 1.6
 resample_size: 2.5
 shape: [4, 512, 512]
-outpath: "C:/Users/PC/Coding/GeoQuery/demo/rewrite_sequential/"
+outpath: "C:/Users/PC/Coding/GeoQuery/demo/test_publishing/"
 download_method: 'sequential'
 mask_label: [41]
 create_gpkg: false

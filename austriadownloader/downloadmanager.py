@@ -16,7 +16,6 @@ class DownloadManager(BaseModel):
     config: ConfigManager
     cols: Tuple[str, ...] = ('id', 'aerial', 'cadster', 'num_items', 'area_items')
     tiles: pd.DataFrame = None
-    #Optional[pd.DataFrame] = Any #AUSTRIA_SAMPLING
     state: pd.DataFrame = Field(
         default_factory=lambda: pd.DataFrame(columns=('id', 'aerial', 'cadster', 'num_items', 'area_items', 'contains_nodata')))
 
@@ -31,7 +30,7 @@ class DownloadManager(BaseModel):
         if isinstance(data, dict) and 'config' in data:
             config = data["config"]
             if isinstance(config, ConfigManager) and hasattr(config, "data_path"):
-                data["tiles"] = pd.read_csv(config.data_path)  # Read the CSV file
+                data["tiles"] = pd.read_csv(config.data_path)
         return data
 
     def start_download(self):
@@ -52,7 +51,7 @@ class DownloadManager(BaseModel):
         if self.tiles is None:
             raise ValueError('Error: Download Data was not loaded.')
 
-        for i, row in self.tiles.iterrows():
+        for i, row in self.tiles[:10].iterrows():
 
             tile_state = DownloadState(id=row.id, lat=row.lat, lon=row.lon)
 
