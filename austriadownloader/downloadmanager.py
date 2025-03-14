@@ -41,7 +41,7 @@ class DownloadManager(BaseModel):
         if self.tiles is None:
             raise ValueError('Error: Download Data was not loaded.')
 
-        for i, row in self.tiles[:10].iterrows():
+        for i, row in self.tiles.iterrows():
 
             tile_state = DownloadState(id=row.id, lat=row.lat, lon=row.lon)
 
@@ -90,7 +90,7 @@ class DownloadManager(BaseModel):
             print("Verbosity with parallel loading will result in no pretty-prints as outputs are created by pooled download requests.")
 
         # Extract rows as dictionaries for easier parallel processing
-        rows = [row for _, row in self.tiles[:10].iterrows()]
+        rows = [row for _, row in self.tiles.iterrows()]
 
         with Pool(processes=os.cpu_count()) as pool:
             results = pool.map(self._parallel, rows)
