@@ -21,7 +21,7 @@ from rasterio.features import rasterize
 from rasterio.windows import Window
 from shapely.geometry import Point, shape
 
-#from austriadownloader.data import AUSTRIA_CADASTRAL
+from austriadownloader.data import AUSTRIA_CADASTRAL
 from austriadownloader.configmanager import ConfigManager
 from austriadownloader.downloadmanager import DownloadState
 

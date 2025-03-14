@@ -1,4 +1,4 @@
-data_path: "C:/Users/PC/Coding/GeoQuery/sample_even_download.csv"
+data_path: "C:/Users/PC/Desktop/TU/Master/MasterThesis/data/download_data/stratified_S2_points_wdate_filter_reduced_wgeotransform.csv"
 pixel_size: 1.6
 resample_size: 2.5
 shape: [4, 512, 512]

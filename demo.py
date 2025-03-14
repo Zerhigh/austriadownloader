@@ -4,9 +4,6 @@ from pathlib import Path
 
 import numpy
 import austriadownloader
-
-austriadownloader.__version__
-
 from austriadownloader.downloadmanager import DownloadManager
 from austriadownloader.configmanager import ConfigManager
 

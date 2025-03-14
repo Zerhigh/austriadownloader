@@ -14,10 +14,6 @@ class DownloadState(BaseModel):
     num_items: int = 0
     set_pixels: int = 0
 
-    # add params to laod and define transform and crs of raster to save later loading time
-    # to_crs: int
-    # raster_transform: rasterio.transform.Affine
-
     class Config:
         # This ensures that the model is mutable after initialization (default behavior)
         frozen = False

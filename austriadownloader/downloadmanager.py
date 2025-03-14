@@ -3,7 +3,7 @@ import os
 import pandas as pd
 
 from typing import Tuple, Optional, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from multiprocessing import Pool
 
 import austriadownloader
@@ -15,13 +15,24 @@ from austriadownloader.downloadstate import DownloadState
 class DownloadManager(BaseModel):
     config: ConfigManager
     cols: Tuple[str, ...] = ('id', 'aerial', 'cadster', 'num_items', 'area_items')
-    tiles: Optional[pd.DataFrame] = Any #AUSTRIA_SAMPLING
+    tiles: pd.DataFrame = None
+    #Optional[pd.DataFrame] = Any #AUSTRIA_SAMPLING
     state: pd.DataFrame = Field(
         default_factory=lambda: pd.DataFrame(columns=('id', 'aerial', 'cadster', 'num_items', 'area_items', 'contains_nodata')))
 
     class Config:
         arbitrary_types_allowed = True  # Allows using non-Pydantic types like pd.DataFrame
         frozen = False  # Allows modifying attributes after initialization
+
+    @model_validator(mode="before")
+    @classmethod
+    def load_tiles(cls, data):
+        """Reads the DataFrame from the path stored in config and assigns it to tiles."""
+        if isinstance(data, dict) and 'config' in data:
+            config = data["config"]
+            if isinstance(config, ConfigManager) and hasattr(config, "data_path"):
+                data["tiles"] = pd.read_csv(config.data_path)  # Read the CSV file
+        return data
 
     def start_download(self):
         """Initiates the download process based on the specified method in the configuration."""
