@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "austriadownloader"
-version = "0.0.1"
+version = "0.0.2"
 description = "This is a template repository for Python projects that use Poetry for their dependency management."
 authors = ["Samuel <samuel@uv.es>"]
 repository = "https://github.com/Zerhigh/austriadownloader"
@@ -26,8 +26,6 @@ mypy = "^1.5.1"
 pre-commit = "^3.4.0"
 tox = "^4.11.1"
 
-
-
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
@@ -41,7 +39,6 @@ check_untyped_defs = "True"
 warn_return_any = "True"
 warn_unused_ignores = "True"
 show_error_codes = "True"
-
 
 
 [tool.pytest.ini_options]

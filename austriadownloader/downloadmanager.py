@@ -2,20 +2,20 @@
 import os
 import pandas as pd
 
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Any
 from pydantic import BaseModel, Field
 from multiprocessing import Pool
 
 import austriadownloader
 from austriadownloader.configmanager import ConfigManager
 from austriadownloader.downloadstate import DownloadState
-from austriadownloader.data import AUSTRIA_SAMPLING
+#from austriadownloader.data import AUSTRIA_SAMPLING
 
 
 class DownloadManager(BaseModel):
     config: ConfigManager
     cols: Tuple[str, ...] = ('id', 'aerial', 'cadster', 'num_items', 'area_items')
-    tiles: Optional[pd.DataFrame] = AUSTRIA_SAMPLING
+    tiles: Optional[pd.DataFrame] = Any #AUSTRIA_SAMPLING
     state: pd.DataFrame = Field(
         default_factory=lambda: pd.DataFrame(columns=('id', 'aerial', 'cadster', 'num_items', 'area_items', 'contains_nodata')))
 

@@ -84,5 +84,5 @@ def load_sampling_data() -> pd.DataFrame:
 
 # Lazy-loaded cadastral data
 # This will only be loaded when first accessed
-AUSTRIA_CADASTRAL: Final[gpd.GeoDataFrame] = load_cadastral_data()
-AUSTRIA_SAMPLING: Final[pd.DataFrame] = load_sampling_data()
+#AUSTRIA_CADASTRAL: Final[gpd.GeoDataFrame] = load_cadastral_data()
+#AUSTRIA_SAMPLING: Final[pd.DataFrame] = load_sampling_data()

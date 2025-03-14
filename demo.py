@@ -1,5 +1,11 @@
+# rm -rf dist/ build/ .egg-info; poetry build; python3 -m twine upload dist/*
 import time
 from pathlib import Path
+
+import numpy
+import austriadownloader
+
+austriadownloader.__version__
 
 from austriadownloader.downloadmanager import DownloadManager
 from austriadownloader.configmanager import ConfigManager

@@ -13,17 +13,15 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import rasterio as rio
-import cv2
 import warnings
 
-from pathlib import Path
 from typing import Final, TypeAlias, Literal, Dict, Tuple, Optional
 from pyproj import Transformer
 from rasterio.features import rasterize
 from rasterio.windows import Window
 from shapely.geometry import Point, shape
 
-from austriadownloader.data import AUSTRIA_CADASTRAL
+#from austriadownloader.data import AUSTRIA_CADASTRAL
 from austriadownloader.configmanager import ConfigManager
 from austriadownloader.downloadmanager import DownloadState
 
@@ -53,8 +51,6 @@ AUSTRIA_CRS: Final[str] = "EPSG:31287"
 
 
 # BUILDING_CLASS: Final[int] = 92  # Building class code
-
-
 def download(tile_state: DownloadState, config: ConfigManager, verbose: bool) -> DownloadState:
     """
     Download and process both raster and vector data for the requested area.

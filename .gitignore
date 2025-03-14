@@ -7,3 +7,7 @@ austriadownloader/__pycache__/
 austriadownloader/austria_data/downloaded_data
 
 demo/
+demo.py
+poetry.lock
+sample_even_download.csv
+stratified_sample_austria.csv
