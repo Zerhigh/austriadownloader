@@ -9,5 +9,6 @@ austriadownloader/austria_data/downloaded_data
 demo/
 demo.py
 poetry.lock
+.venv
 sample_even_download.csv
 stratified_sample_austria.csv
