@@ -1,11 +1,11 @@
 data_path: "C:/Users/PC/Desktop/TU/Master/MasterThesis/data/download_data/stratified_S2_points_wdate_filter_reduced_wgeotransform.csv"
 pixel_size: 1.6
-resample_size: 2.5
-shape: [4, 512, 512]
-outpath: "C:/Users/PC/Coding/GeoQuery/demo/test_from_geotransform/"
+resample_size: null
+shape: [4, 1024, 1024]
+outpath: "C:/Users/PC/Coding/GeoQuery/demo/test_to_trafo/"
 download_method: 'sequential'
 mask_label: [41]
-from_geotransform: True
+from_geotransform: False
 create_gpkg: false
 nodata_mode: "flag"
 nodata_value: 0
