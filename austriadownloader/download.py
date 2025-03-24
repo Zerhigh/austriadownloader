@@ -109,7 +109,7 @@ def download(tile_state: DownloadState, config: ConfigManager, verbose: bool) ->
                 print(f"    Downloading vector cadastral data: Code(s): {config.mask_label}")
             download_vector(tile_state, config, point_planar, meta_data)
             if verbose:
-                print(f"    Finished downloading and processing data to: {config.outpath}/*_{tile_state.id}.tif")
+                print(f"    Finished downloading and processing data to: {config.outpath}/*/*_{tile_state.id}.tif")
         else:
             if verbose:
                 print(f'    Did not download raster and vector data as no raster was accessed. Likely due to NoData values and {config.nodata_mode} set as "remove"')
@@ -384,7 +384,7 @@ def process_vector_data(
     """Process and save vector data within the specified bounding box."""
 
     # Without file extension!
-    fp = config.outpath / f"{config.outfile_prefixes['vector']}_{tile_state.id}"
+    fp = config.outpath  / 'target'/ f"{config.outfile_prefixes['vector']}_{tile_state.id}"
 
     with fiona.open(vector_url, layer="NFL") as src:
         # conversion to gdf: removed any property values
@@ -401,7 +401,7 @@ def process_vector_data(
 
             # Rasterize the geometries into the raster
             # change this and add the info to the state_manager
-            with rio.open(config.outpath / f"{config.outfile_prefixes['raster']}_{tile_state.id}.tif") as img_src:
+            with rio.open(config.outpath / 'input' / f"{config.outfile_prefixes['raster']}_{tile_state.id}.tif") as img_src:
                 # convert geoemtries to raster specific crs
                 gdf.to_crs(crs=img_src.crs, inplace=True)
 
@@ -449,7 +449,7 @@ def process_vector_data(
         # write empty image
         else:
             print(f'    No results for class {config.mask_label} at lat: {tile_state.lat} // lon: {tile_state.lon}')
-            with rio.open(config.outpath / f"input_{tile_state.id}.tif") as img_src:
+            with rio.open(config.outpath / 'input' / f"input_{tile_state.id}.tif") as img_src:
                 binary_raster = np.zeros((config.shape[1], config.shape[1]), dtype=np.uint8)
 
                 # Save the rasterized binary image
@@ -531,7 +531,7 @@ def save_raster_data(
         'blockysize': 256
     })
 
-    output_path = config.outpath / f"{config.outfile_prefixes['raster']}_{tile_state.id}.tif"
+    output_path = config.outpath / 'input' / f"{config.outfile_prefixes['raster']}_{tile_state.id}.tif"
     with rio.open(output_path, "w", **profile) as dst:
         dst.write(data)
 

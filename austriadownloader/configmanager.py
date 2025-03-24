@@ -63,6 +63,8 @@ class ConfigManager(BaseModel):
         path = Path(value)
         # create folder structure
         Path(path).mkdir(parents=True, exist_ok=True)
+        Path(path / 'input').mkdir(parents=True, exist_ok=True)
+        Path(path / 'target').mkdir(parents=True, exist_ok=True)
         if not path.exists() or not path.is_dir():
             raise ValueError(f"Output path is invalid: {path}")
         return path

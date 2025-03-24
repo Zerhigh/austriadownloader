@@ -1,10 +1,11 @@
-data_path: "C:/Users/PC/Coding/GeoQuery/demo/download_stratified_ALL_S2_points_wdate_filter_combined.csv"
+data_path: "/home/shollend/coding/download_stratified_ALL_S2_points_wdate_filter_combined.csv"
 pixel_size: 1.6
-resample_size: null # null
-shape: [4, 512, 512]
-outpath: "C:/Users/PC/Coding/GeoQuery/demo/test_multiclass/"
-download_method: 'parallel'
+resample_size: null
+shape: [4, 1140, 1140]
+outpath: "/data/USERS/shollend/orthophoto/austria_full_allclasses"
+download_method: 'sequential'
 mask_label: [41]
+from_geotransform: False
 create_gpkg: false
 nodata_mode: "flag"
 nodata_value: 0
