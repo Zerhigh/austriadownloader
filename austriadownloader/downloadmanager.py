@@ -6,6 +6,7 @@ from typing import Tuple, Optional
 from pydantic import BaseModel, Field, model_validator
 from multiprocessing import Pool
 
+import austriadownloader
 from austriadownloader.configmanager import ConfigManager
 from austriadownloader.downloadstate import DownloadState
 
@@ -49,7 +50,7 @@ class DownloadManager(BaseModel):
         if self.tiles is None:
             raise ValueError('Error: Download Data was not loaded.')
 
-        for i, row in self.tiles[:10].iterrows():
+        for i, row in self.tiles.iterrows():
 
             tile_state = DownloadState(id=row.id, lat=row.lat, lon=row.lon)
 
