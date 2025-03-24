@@ -28,6 +28,7 @@ class ConfigManager(BaseModel):
     verbose: bool = False
     nodata_mode: str = 'flag'
     nodata_value: int = 0
+    all_classes: bool = False
 
     class Config:
         frozen = True  # Make instances immutable
@@ -132,9 +133,14 @@ class ConfigManager(BaseModel):
             "verbose": False,
             "nodata_value": 0,
             "download_method": "sequential",
-            "outfile_prefixes": {"raster": "input", "vector": "target"}
+            "outfile_prefixes": {"raster": "input", "vector": "target"},
+            "all_classes": False,
         }
         config_data = {**default_values, **config_data}  # Merge defaults with provided values
+
+        if config_data['all_classes']:
+            config_data['mask_label'] = list(VALID_MASK_LABELS)
+            print(f'Selected All Classes: Mask label {config_data["mask_label"]} will be overwritten!')
 
         try:
             return cls(**config_data)

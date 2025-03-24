@@ -2,7 +2,7 @@
 import os
 import pandas as pd
 
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict
 from pydantic import BaseModel, Field, model_validator
 from multiprocessing import Pool
 
@@ -50,7 +50,7 @@ class DownloadManager(BaseModel):
         if self.tiles is None:
             raise ValueError('Error: Download Data was not loaded.')
 
-        for i, row in self.tiles.iterrows():
+        for i, row in self.tiles[20:25].iterrows():
 
             tile_state = DownloadState(id=row.id, lat=row.lat, lon=row.lon)
 

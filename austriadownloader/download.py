@@ -389,7 +389,8 @@ def process_vector_data(
     with fiona.open(vector_url, layer="NFL") as src:
         # conversion to gdf: removed any property values
         filtered_features = [
-            {"geometry": shape(feat["geometry"])}
+            {"geometry": shape(feat["geometry"]),
+             "label": tile_state.land_use_mapped[feat["properties"].get("NS")]}
                 for feat in src.filter(bbox=bbox)
                     if feat["properties"].get("NS") in config.mask_label
         ]
@@ -410,7 +411,7 @@ def process_vector_data(
                 # if requested provide transformed vector file
                 if config.create_gpkg:
                     gdf.to_file(fp.with_suffix(".gpkg"), driver='GPKG', layer='NFL')
-                shapes = [(geom, 1) for geom in gdf.geometry]  # Assign value 1 to features
+                shapes = [(row.geometry, row.label) for row in gdf.itertuples()] #[(geom, 1) for geom in gdf.geometry]
                 binary_raster = rasterize(shapes, out_shape=config.shape[1:], transform=img_src.transform,
                                           fill=0)
 
