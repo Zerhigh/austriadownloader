@@ -13,10 +13,9 @@ from austriadownloader.downloadstate import DownloadState
 
 class DownloadManager(BaseModel):
     config: ConfigManager
-    cols: Tuple[str, ...] = ('id', 'aerial', 'cadster', 'num_items', 'area_items')
+    state: pd.DataFrame = None # = Field(default_factory=lambda: pd.DataFrame(columns=('id', 'aerial', 'cadster', 'num_items', 'area_items', 'contains_nodata')))
+    #cols: Tuple[str, ...] = ('id', 'aerial', 'cadster', 'num_items', 'area_items')
     tiles: pd.DataFrame = None
-    state: pd.DataFrame = Field(
-        default_factory=lambda: pd.DataFrame(columns=('id', 'aerial', 'cadster', 'num_items', 'area_items', 'contains_nodata')))
 
     class Config:
         arbitrary_types_allowed = True  # Allows using non-Pydantic types like pd.DataFrame
@@ -31,6 +30,18 @@ class DownloadManager(BaseModel):
             if isinstance(config, ConfigManager) and hasattr(config, "data_path"):
                 data["tiles"] = pd.read_csv(config.data_path)
         return data
+
+    def add_row(self, new_data: dict):
+        """
+        Adds a new row to the DataFrame. If it doesn't exist, it initializes it.
+        :param new_data: Dictionary containing column names as keys and values as row data.
+        """
+        new_row = pd.DataFrame([new_data])  # Convert dict to DataFrame
+
+        if self.state is None:
+            self.state = new_row
+        else:
+            self.state = pd.concat([self.state, new_row], ignore_index=True)
 
     def start_download(self):
         """Initiates the download process based on the specified method in the configuration."""
@@ -50,7 +61,7 @@ class DownloadManager(BaseModel):
         if self.tiles is None:
             raise ValueError('Error: Download Data was not loaded.')
 
-        for i, row in self.tiles[20:25].iterrows():
+        for i, row in self.tiles[20:21].iterrows():
 
             tile_state = DownloadState(id=row.id, lat=row.lat, lon=row.lon)
 
@@ -59,7 +70,7 @@ class DownloadManager(BaseModel):
                 continue
 
             download = austriadownloader.download(tile_state, self.config, verbose=self.config.verbose)
-            self.state.loc[download.id] = download.get_state()
+            self.add_row(download.get_state())
 
             # save every 100 steps
             if i % 100 == 0:
@@ -99,7 +110,7 @@ class DownloadManager(BaseModel):
             print("Verbosity with parallel loading will result in no pretty-prints as outputs are created by pooled download requests.")
 
         # Extract rows as dictionaries for easier parallel processing
-        rows = [row for _, row in self.tiles.iterrows()]
+        rows = [row for _, row in self.tiles[20:22].iterrows()]
 
         with Pool(processes=os.cpu_count()) as pool:
             results = pool.map(self._parallel, rows)
@@ -107,7 +118,7 @@ class DownloadManager(BaseModel):
         # Update manager state after parallel processing
         for tile_id, state in results:
             if state:  # If state is not None, update the manager
-                self.state.loc[tile_id] = state
+                self.add_row(state)
 
         # Save the state log
         self.state.to_csv(f'{self.config.outpath}/statelog.csv', index=False)

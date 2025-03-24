@@ -395,9 +395,6 @@ def process_vector_data(
                     if feat["properties"].get("NS") in config.mask_label
         ]
 
-        # add number of objects to state managEr
-        tile_state.num_items = len(filtered_features)
-
         # Objects ahve been found and will be transformed into raster
         if len(filtered_features) > 0:
             gdf = gpd.GeoDataFrame(filtered_features, crs=src.crs)
@@ -415,9 +412,24 @@ def process_vector_data(
                 binary_raster = rasterize(shapes, out_shape=config.shape[1:], transform=img_src.transform,
                                           fill=0)
 
-                # add the pixel number to state manager
-                set_pixels = np.count_nonzero(binary_raster == 1)
-                tile_state.set_pixels = set_pixels
+                # add number of objects to state managEr
+                num_px = config.shape[1] * config.shape[2]
+                counts = gdf['label'].value_counts().to_dict()
+
+                # add no data value
+                tile_state.class_distributions[0] = round(np.count_nonzero(binary_raster == 0) / num_px, 3)
+
+                for ml in config.mask_label:
+                    count = np.count_nonzero(binary_raster == tile_state.land_use_mapped[ml])
+                    tile_state.class_distributions[ml] = round(count / num_px, 3)
+                    tile_state.class_instance_count[ml] = counts[ml] if ml in counts else 0
+
+
+                # tile_state.num_items = len(filtered_features)
+                # # add the pixel number to state manager
+                # set_pixels = np.count_nonzero(binary_raster == 1)
+                # tile_state.set_pixels = set_pixels
+
                 # psize = config.pixel_size if config.resample_size is None else config.resample_size
                 #tile_state.area_items = round(psize**2 * set_pixels, 2)
 

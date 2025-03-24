@@ -3,7 +3,7 @@ pixel_size: 1.6
 resample_size: null # null
 shape: [4, 512, 512]
 outpath: "C:/Users/PC/Coding/GeoQuery/demo/test_multiclass/"
-download_method: 'sequential'
+download_method: 'parallel'
 mask_label: [41]
 create_gpkg: false
 nodata_mode: "flag"

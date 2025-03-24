@@ -34,11 +34,14 @@ class DownloadState(BaseModel):
         54: 25
     }
 
+    class_distributions: Dict[int, float] = {}
+    class_instance_count: Dict[int, int] = {}
     contains_nodata: bool = False
     raster_download_success: bool = False
     vector_download_success: bool = False
-    num_items: int = 0
-    set_pixels: int = 0
+
+    # num_items: int = 0
+    # set_pixels: int = 0
 
     class Config:
         # This ensures that the model is mutable after initialization (default behavior)
@@ -51,14 +54,20 @@ class DownloadState(BaseModel):
 
     def get_state(self) -> Dict[str, any]:
         """Returns the state information for adding to df."""
-        return {
+        base = {
             'id': self.id,
             'aerial': self.raster_download_success,
-            'cadster': self.vector_download_success,
-            'num_items': self.num_items,
-            'area_items': self.set_pixels,
+            'cadaster': self.vector_download_success,
+            # 'num_items': self.num_items,
+            # 'area_items': self.set_pixels,
             'contains_nodata': self.contains_nodata
         }
+
+        for (kd, vd), (kc, vc) in zip(self.class_distributions.items(), self.class_instance_count.items()):
+            base[f'dist_{kd}'] = vd
+            base[f'count_{kc}'] = vc
+
+        return base
 
     def set_raster_failed(self):
         """Marks the raster download as failed."""
