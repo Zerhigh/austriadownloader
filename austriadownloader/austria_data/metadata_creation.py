@@ -174,6 +174,8 @@ class MetaDataCreator:
 
                 # Update columns with modified and datetime coherent time columns
                 bev_meta['Date'] = bev_meta['beginLifeS'].apply(self.convert_date)
+                bev_meta['start_date'] = bev_meta['beginLifeS'].apply(self.convert_date)
+                bev_meta['end_date'] = bev_meta['endLifeSpa'].apply(self.convert_date)
                 bev_meta['prevTime'] = bev_meta['Date'].apply(self.get_previous_timestep)
 
                 # Generate download urls for vector and raster data (both RGB and NIR)

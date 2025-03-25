@@ -2,7 +2,7 @@ data_path: "C:/Users/PC/Coding/GeoQuery/demo/download_stratified_ALL_S2_points_w
 pixel_size: 1.6
 resample_size: null
 shape: [4, 1140, 1140]
-outpath: "C:/Users/PC/Coding/GeoQuery/demo/test_class_integervals"
+outpath: "C:/Users/PC/Coding/GeoQuery/demo/test_redo_metadata"
 download_method: 'sequential'
 mask_label: [41]
 from_geotransform: False
