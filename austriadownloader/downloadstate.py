@@ -6,42 +6,12 @@ class DownloadState(BaseModel):
     id: str | int | float
     lat: float
     lon: float
-    land_use_mapped: Dict[int, int] = {
-        41: 1,
-        83: 2,
-        59: 3,
-        60: 4,
-        61: 5,
-        64: 6,
-        40: 7,
-        48: 8,
-        57: 9,
-        55: 10,
-        56: 11,
-        58: 12,
-        42: 13,
-        62: 14,
-        63: 15,
-        65: 16,
-        72: 17,
-        84: 18,
-        87: 19,
-        88: 20,
-        92: 21,
-        95: 22,
-        96: 23,
-        52: 24,
-        54: 25
-    }
 
     class_distributions: Dict[int, float] = {}
     class_instance_count: Dict[int, int] = {}
     contains_nodata: bool = False
     raster_download_success: bool = False
     vector_download_success: bool = False
-
-    # num_items: int = 0
-    # set_pixels: int = 0
 
     class Config:
         # This ensures that the model is mutable after initialization (default behavior)

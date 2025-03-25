@@ -390,7 +390,7 @@ def process_vector_data(
         # conversion to gdf: removed any property values
         filtered_features = [
             {"geometry": shape(feat["geometry"]),
-             "label": tile_state.land_use_mapped[feat["properties"].get("NS")]}
+             "label": feat["properties"].get("NS")}
                 for feat in src.filter(bbox=bbox)
                     if feat["properties"].get("NS") in config.mask_label
         ]
@@ -420,7 +420,7 @@ def process_vector_data(
                 tile_state.class_distributions[0] = round(np.count_nonzero(binary_raster == 0) / num_px, 3)
 
                 for ml in config.mask_label:
-                    count = np.count_nonzero(binary_raster == tile_state.land_use_mapped[ml])
+                    count = np.count_nonzero(binary_raster == ml)
                     tile_state.class_distributions[ml] = round(count / num_px, 3)
                     tile_state.class_instance_count[ml] = counts[ml] if ml in counts else 0
 
