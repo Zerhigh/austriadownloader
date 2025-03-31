@@ -5,6 +5,7 @@ import pandas as pd
 from typing import Tuple, Optional, Dict
 from pydantic import BaseModel, Field, model_validator
 from multiprocessing import Pool
+from tqdm import tqdm
 
 import austriadownloader
 from austriadownloader.configmanager import ConfigManager
@@ -113,7 +114,7 @@ class DownloadManager(BaseModel):
         rows = [row for _, row in self.tiles.iterrows()]
 
         with Pool(processes=os.cpu_count()) as pool:
-            results = pool.map(self._parallel, rows)
+            results = list(tqdm(pool.imap_unordered(self._parallel, rows), total=len(rows), desc="Processing"))
 
         # Update manager state after parallel processing
         for tile_id, state in results:
