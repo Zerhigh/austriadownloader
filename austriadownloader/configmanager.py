@@ -10,7 +10,7 @@ ImageShape = tuple[ChannelCount, int, int]
 
 # Valid constants
 VALID_PIXEL_SIZES: Final = (0.2, 0.4, 0.8, 1.6, 3.2, 6.4, 12.8, 25.6, 51.2, 102.4, 204.8)
-VALID_MASK_LABELS: Final = (40, 41, 42, 48, 52, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 72, 83, 84, 87, 88, 92, 95, 96)
+VALID_MASK_LABELS: Final = (40, 41, 42, 48, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 72, 83, 84, 87, 88, 92, 95, 96)
 VALID_DOWNLOADS_METHODS: Final = ('sequential', 'parallel')
 
 
