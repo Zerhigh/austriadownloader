@@ -1,11 +1,10 @@
-data_path: "/home/shollend/coding/ALL_S2_points_regular_grid.csv"
+data_path: "C:/Users/PC/Desktop/TU/Master/MasterThesis/data/metadata/sampling/ALL_S2_points_regular_grid.csv"
 pixel_size: 1.6
 resample_size: null
 shape: [4, 1140, 1140]
-outpath: "/data/USERS/shollend/orthophoto/austria_full_allclasses_regridded"
-download_method: 'parallel'
+outpath: "C:/Users/PC/Desktop/TU/Master/MasterThesis/data/metadata/austriadownloader_results"
+download_method: 'sequential'
 mask_label: [40, 41, 42, 48, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 72, 83, 84, 87, 88, 92, 95, 96]
-from_geotransform: False
 create_gpkg: false
 nodata_mode: "flag"
 nodata_value: 0

@@ -141,8 +141,8 @@ class ConfigManager(BaseModel):
         config_data = {**default_values, **config_data}  # Merge defaults with provided values
 
         if config_data['all_classes']:
+            print(f'Selected All Classes for download: Previously selected mask labels {config_data["mask_label"]} will be overwritten!')
             config_data['mask_label'] = list(VALID_MASK_LABELS)
-            print(f'Selected All Classes: Mask label {config_data["mask_label"]} will be overwritten!')
 
         try:
             return cls(**config_data)

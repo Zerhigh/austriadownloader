@@ -37,7 +37,7 @@ class DownloadManager(BaseModel):
         Adds a new row to the DataFrame. If it doesn't exist, it initializes it.
         :param new_data: Dictionary containing column names as keys and values as row data.
         """
-        new_row = pd.DataFrame([new_data])  # Convert dict to DataFrame
+        new_row = pd.DataFrame([new_data])
 
         if self.state is None:
             self.state = new_row
@@ -54,7 +54,7 @@ class DownloadManager(BaseModel):
         except Exception as e:
             print(f"Error downloading tiles: {e}")
 
-    def download_sequential(self):
+    def download_sequential(self) -> None:
         """Downloads tiles sequentially, ensuring each tile is processed one at a time.
         Raises:
             ValueError: If no tile data is loaded before initiating the download.
@@ -63,7 +63,6 @@ class DownloadManager(BaseModel):
             raise ValueError('Error: Download Data was not loaded.')
 
         for i, row in self.tiles.iterrows():
-
             tile_state = DownloadState(id=row.id, lat=row.lat, lon=row.lon)
 
             # if file is already downloaded, skip it
@@ -81,7 +80,7 @@ class DownloadManager(BaseModel):
 
         return
 
-    def _parallel(self, row):
+    def _parallel(self, row: pd.Series) -> Tuple[str, Dict[str, any] | None]:
         """Handles downloading a single tile in parallel processing mode.
         Args:
             row (pd.Series): A row from the tile dataset containing tile information.
@@ -99,7 +98,7 @@ class DownloadManager(BaseModel):
 
         return download.id, download.get_state()
 
-    def download_parallel(self):
+    def download_parallel(self) -> None:
         """Downloads tiles in parallel using multiprocessing for improved performance.
         Raises:
             ValueError: If no tile data is loaded before initiating the download.
