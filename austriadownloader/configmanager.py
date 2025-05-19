@@ -1,4 +1,6 @@
 import json
+import os
+
 import yaml
 from pathlib import Path
 from typing import Literal, Final, TypeAlias, Dict
@@ -73,6 +75,7 @@ class ConfigManager(BaseModel):
     @classmethod
     def validate_data_path(cls, value: Path | str) -> Path:
         path = Path(value)
+        curr = os.getcwd()
         if not path.exists():
             raise ValueError(f"data_path path is invalid: {path}")
         return path

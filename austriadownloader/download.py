@@ -14,10 +14,12 @@ import numpy as np
 import pandas as pd
 import rasterio as rio
 import warnings
+from pathlib import Path
 
 from typing import Final, TypeAlias, Literal, Dict, Tuple, Optional
 
 import rasterio.transform
+import shapely
 from pyproj import Transformer
 from rasterio.features import rasterize
 from rasterio.windows import Window
@@ -442,8 +444,24 @@ def process_vector_data(
 ) -> None:
     """Process and save vector data within the specified bounding box."""
 
+    def project_coords(x, y):
+        transformer = Transformer.from_crs(31256, AUSTRIA_CRS, always_xy=True)
+        return transformer.transform(x, y)
+
+
     # Without file extension!
     fp = config.outpath  / 'target'/ f"{config.outfile_prefixes['vector']}_{tile_state.id}"
+
+    # testing alterntive bbox from img
+    if True:
+        with rio.open(config.outpath / 'input' / f"{config.outfile_prefixes['raster']}_{tile_state.id}.tif") as TT:
+            tt = TT.transform
+            minx, maxy = tt * (0, 0)  # top-left corner
+            maxx, miny = tt * (TT.profile['width'], TT.profile['width'])
+            bbox_poly = shapely.geometry.box(minx, miny, maxx, maxy)
+
+            bbox = shapely.ops.transform(project_coords, bbox_poly).bounds
+
 
     with fiona.open(vector_url, layer="NFL") as src:
         # conversion to gdf: removed any property values
