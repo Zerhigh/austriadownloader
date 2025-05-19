@@ -7,6 +7,8 @@ austriadownloader/__pycache__/
 austriadownloader/austria_data/downloaded_data
 
 demo/
+figures
+
 demo.py
 poetry.lock
 dist

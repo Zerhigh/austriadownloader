@@ -100,10 +100,12 @@ def download(tile_state: DownloadState, config: ConfigManager, verbose: bool) ->
             if verbose:
                 print("    Downloading RGB raster data.")
             download_rasterdata_rgb(tile_state, config, meta_data)
+
         elif config.shape[0] == 4:
             if verbose:
                 print("    Downloading RGB and NIR raster data.")
             download_rasterdata_rgbn(tile_state, config, meta_data)
+
         else:
             raise ValueError(f"    Invalid channel count: {config.shape[0]}. Must be 3 (RGB) or 4 (RGB and NIR).")
 
@@ -111,7 +113,8 @@ def download(tile_state: DownloadState, config: ConfigManager, verbose: bool) ->
         if tile_state.check_raster():
             if verbose:
                 print(f"    Downloading vector cadastral data: Code(s): {config.mask_label}")
-            download_vector(tile_state, config, point_planar, meta_data)
+            download_vector(tile_state, config, meta_data)
+
             if verbose:
                 print(f"    Finished downloading and processing data to: {config.outpath}/*/*_{tile_state.id}.tif")
         else:
@@ -124,14 +127,13 @@ def download(tile_state: DownloadState, config: ConfigManager, verbose: bool) ->
         raise IOError(f"Failed to process data request: {str(e)}") from e
 
 
-def download_vector(tile_state: DownloadState, config: ConfigManager, point_planar: Coordinates, vector_data: pd.Series) -> None:
+def download_vector(tile_state: DownloadState, config: ConfigManager, vector_data: pd.Series) -> None:
     """
     Download and process vector data for the specified location.
 
     Args:
         tile_state: Class for keeping track of Download Processes
         config: RConfigManager object.
-        point_planar: Coordinate tuple
         vector_data: Metadata Series with download URL
 
     Returns:
@@ -143,20 +145,10 @@ def download_vector(tile_state: DownloadState, config: ConfigManager, point_plan
     """
     try:
         # Calculate bounding box: define rasterization and extent size
-        bbox_pixel_size = config.pixel_size
-        if config.resample_size is not None:
-            bbox_pixel_size = config.resample_size
-
-        bbox = calculate_bbox(
-            point_planar,
-            pixel_size=bbox_pixel_size,
-            shape=config.shape[1:]
-        )
 
         # Process and save vector data
         process_vector_data(
             vector_url=vector_data["vector_url"],
-            bbox=bbox,
             config=config,
             tile_state=tile_state
         )
@@ -420,25 +412,8 @@ def get_intersecting_cadastral(point_geometry: Point) -> pd.Series | None:
         return intersecting.iloc[0]
 
 
-def calculate_bbox(
-        point: Coordinates,
-        pixel_size: float,
-        shape: Tuple[int, int]
-) -> BoundingBox:
-    """Calculate bounding box for the given point and dimensions."""
-    x_size = (pixel_size * shape[1]) // 2
-    y_size = (pixel_size * shape[0]) // 2
-    return (
-        point[0] - x_size,
-        point[1] - y_size,
-        point[0] + x_size,
-        point[1] + y_size
-    )
-
-
 def process_vector_data(
         vector_url: str,
-        bbox: BoundingBox,
         config: ConfigManager,
         tile_state: DownloadState
 ) -> None:
@@ -476,6 +451,9 @@ def process_vector_data(
                 # convert austrian crs vector geoemtries to raster specific local crs
                 gdf = gpd.GeoDataFrame(filtered_features, crs=src.crs)
                 gdf.to_crs(crs=img_src.crs, inplace=True)
+
+                # if set, apply the class remapping
+                gdf['label'] = gdf['label'].replace(config.mask_remapping)
 
                 # if requested provide transformed vector file
                 if config.create_gpkg:
@@ -622,9 +600,9 @@ def pad_tensor(data: np.ndarray, tile_state: DownloadState, href: int = 512, wre
 
     # check for nodata_method
     if nodata_method == 'flag':
-        print(f'Queryied window contains NoData values, set to: 0')
+        print(f'Queryied window ({tile_state.id}) contains NoData values, set to: 0')
 
-        tile_state.contains_nodata = True
+        tile_state.ortho_contains_nodata = True
 
         # Create a zero-filled array of the target shape
         padded = np.zeros((c, href, wref), dtype=data.dtype)
@@ -634,5 +612,5 @@ def pad_tensor(data: np.ndarray, tile_state: DownloadState, href: int = 512, wre
 
         return padded
     elif nodata_method == 'remove':
-        tile_state.contains_nodata = True
+        tile_state.ortho_contains_nodata = True
         return None

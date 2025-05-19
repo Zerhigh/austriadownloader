@@ -9,7 +9,7 @@ class DownloadState(BaseModel):
 
     class_distributions: Dict[int, float] = {}
     class_instance_count: Dict[int, int] = {}
-    contains_nodata: bool = False
+    ortho_contains_nodata: bool = False
     raster_download_success: bool = False
     vector_download_success: bool = False
 
@@ -28,9 +28,7 @@ class DownloadState(BaseModel):
             'id': self.id,
             'aerial': self.raster_download_success,
             'cadaster': self.vector_download_success,
-            # 'num_items': self.num_items,
-            # 'area_items': self.set_pixels,
-            'contains_nodata': self.contains_nodata
+            'ortho_contains_nodata': self.ortho_contains_nodata
         }
 
         for (kd, vd), (kc, vc) in zip(self.class_distributions.items(), self.class_instance_count.items()):

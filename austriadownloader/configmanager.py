@@ -3,7 +3,7 @@ import os
 
 import yaml
 from pathlib import Path
-from typing import Literal, Final, TypeAlias, Dict
+from typing import Literal, Final, TypeAlias, Dict, Any, List, Tuple
 from pydantic import BaseModel, field_validator, ValidationError, model_validator
 
 # Type aliases
@@ -21,7 +21,7 @@ class ConfigManager(BaseModel):
     pixel_size: float
     shape: ImageShape
     outpath: Path | str
-    mask_label: list[int] | tuple[int] | int
+    mask_label: List[int] | Tuple[int] | int
 
     outfile_prefixes: Dict[str, str] = {"raster": "input", "vector": "target"}
     resample_size: float | int | None = None
@@ -30,7 +30,7 @@ class ConfigManager(BaseModel):
     verbose: bool = False
     nodata_mode: str = 'flag'
     nodata_value: int = 0
-    all_classes: bool = False
+    mask_remapping: Dict[int, Any] | None = None  # mapping FROM - TO
 
     class Config:
         frozen = True  # Make instances immutable
@@ -75,7 +75,6 @@ class ConfigManager(BaseModel):
     @classmethod
     def validate_data_path(cls, value: Path | str) -> Path:
         path = Path(value)
-        curr = os.getcwd()
         if not path.exists():
             raise ValueError(f"data_path path is invalid: {path}")
         return path
@@ -89,12 +88,31 @@ class ConfigManager(BaseModel):
 
     @field_validator("mask_label")
     @classmethod
-    def validate_mask_label(cls, value: list[int] | tuple[int] | int) -> list[int]:
+    def validate_mask_label(cls, value: List[int] | Tuple[int] | int) -> list[int]:
         if isinstance(value, int):
             value = [value]
         if not all(val in VALID_MASK_LABELS for val in value):
             raise ValueError(f"Invalid mask labels: {value}. Must be within {VALID_MASK_LABELS}")
-        return value
+        else:
+            return value
+
+    @field_validator("mask_remapping")
+    @classmethod
+    def validate_mask_remapping(cls, value: Dict[int, Any]) -> Dict[int, List[int]]:
+        # invert mapping dict to have FROM - TO
+        new = {}
+        for k, v in value.items():
+            if isinstance(v, int):
+                new[v] = k
+            else:
+                for vv in v:
+                    new[vv] = k
+
+        if not all(val in VALID_MASK_LABELS for val in new.keys()):
+            raise ValueError(f"Invalid mask label {v} in mask_remapping {value}. "
+                             f"Must be within {VALID_MASK_LABELS}")
+
+        return new
 
     @field_validator("download_method")
     @classmethod
@@ -105,7 +123,6 @@ class ConfigManager(BaseModel):
 
     @model_validator(mode="after")
     def check_pixel_resampling_size(self):
-        """Ensure consistent pixel and resample size."""
         if self.resample_size is not None:
             if self.resample_size <= self.pixel_size:
                 raise ValueError(f"resample_size {self.resample_size} must be larger than pixel_size {self.pixel_size}")
@@ -139,13 +156,9 @@ class ConfigManager(BaseModel):
             "nodata_value": 0,
             "download_method": "sequential",
             "outfile_prefixes": {"raster": "input", "vector": "target"},
-            "all_classes": False,
+            "mask_remapping": None,
         }
         config_data = {**default_values, **config_data}  # Merge defaults with provided values
-
-        if config_data['all_classes']:
-            print(f'Selected All Classes for download: Previously selected mask labels {config_data["mask_label"]} will be overwritten!')
-            config_data['mask_label'] = list(VALID_MASK_LABELS)
 
         try:
             return cls(**config_data)

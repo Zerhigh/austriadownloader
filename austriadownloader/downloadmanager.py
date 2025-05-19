@@ -30,6 +30,11 @@ class DownloadManager(BaseModel):
             config = data["config"]
             if isinstance(config, ConfigManager) and hasattr(config, "data_path"):
                 data["tiles"] = pd.read_csv(config.data_path)
+
+        # VALIDATION
+        if set(config.mask_label) != set(config.mask_remapping.keys()):
+            raise Warning(f"Selected mask_label ({config.mask_label}) is not identical to provided mask_remapping labels ({list(config.mask_remapping.keys())})! "
+                          f"This will lead to unexpected behaviour if not corrected.")
         return data
 
     def add_row(self, new_data: dict):
