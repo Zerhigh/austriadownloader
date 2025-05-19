@@ -62,7 +62,7 @@ class DownloadManager(BaseModel):
         if self.tiles is None:
             raise ValueError('Error: Download Data was not loaded.')
 
-        for i, row in self.tiles.iterrows():
+        for i, row in tqdm(self.tiles.iterrows()):
             tile_state = DownloadState(id=row.id, lat=row.lat, lon=row.lon)
 
             # if file is already downloaded, skip it

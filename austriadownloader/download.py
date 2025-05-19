@@ -444,52 +444,49 @@ def process_vector_data(
 ) -> None:
     """Process and save vector data within the specified bounding box."""
 
-    def project_coords(x, y):
-        transformer = Transformer.from_crs(31256, AUSTRIA_CRS, always_xy=True)
-        return transformer.transform(x, y)
-
-
     # Without file extension!
-    fp = config.outpath  / 'target'/ f"{config.outfile_prefixes['vector']}_{tile_state.id}"
+    fp = config.outpath / 'target' / f"{config.outfile_prefixes['vector']}_{tile_state.id}"
 
-    # testing alterntive bbox from img
-    if True:
-        with rio.open(config.outpath / 'input' / f"{config.outfile_prefixes['raster']}_{tile_state.id}.tif") as TT:
-            tt = TT.transform
-            minx, maxy = tt * (0, 0)  # top-left corner
-            maxx, miny = tt * (TT.profile['width'], TT.profile['width'])
-            bbox_poly = shapely.geometry.box(minx, miny, maxx, maxy)
+    # extract bbox from raster
+    with rio.open(config.outpath / 'input' / f"{config.outfile_prefixes['raster']}_{tile_state.id}.tif") as img_src:
 
-            bbox = shapely.ops.transform(project_coords, bbox_poly).bounds
+        def project_coords(x, y):
+            # shitty iterative trafo hack for crs_from local
+            transformer = Transformer.from_crs(img_src.crs, AUSTRIA_CRS, always_xy=True)
+            return transformer.transform(x, y)
 
+        minx, maxy = img_src.transform * (0, 0)
+        maxx, miny = img_src.transform * (img_src.profile['width'], img_src.profile['width'])
 
-    with fiona.open(vector_url, layer="NFL") as src:
-        # conversion to gdf: removed any property values
-        filtered_features = [
-            {"geometry": shape(feat["geometry"]),
-             "label": feat["properties"].get("NS")}
-                for feat in src.filter(bbox=bbox)
-                    if feat["properties"].get("NS") in config.mask_label
-        ]
+        # transform from local raster crs to austrian crs
+        bbox_poly = shapely.geometry.box(minx, miny, maxx, maxy)
+        bbox = shapely.ops.transform(project_coords, bbox_poly).bounds
 
-        # Objects ahve been found and will be transformed into raster
-        if len(filtered_features) > 0:
-            gdf = gpd.GeoDataFrame(filtered_features, crs=src.crs)
+        with fiona.open(vector_url, layer="NFL") as src:
+            # conversion to gdf: removed any property values
+            filtered_features = [
+                {"geometry": shape(feat["geometry"]),
+                 "label": feat["properties"].get("NS")}
+                    for feat in src.filter(bbox=bbox)
+                        if feat["properties"].get("NS") in config.mask_label
+            ]
 
-            # Rasterize the geometries into the raster
-            # change this and add the info to the state_manager
-            with rio.open(config.outpath / 'input' / f"{config.outfile_prefixes['raster']}_{tile_state.id}.tif") as img_src:
-                # convert geoemtries to raster specific crs
+            # Objects ahve been found and will be transformed into raster
+            if len(filtered_features) > 0:
+                # convert austrian crs vector geoemtries to raster specific local crs
+                gdf = gpd.GeoDataFrame(filtered_features, crs=src.crs)
                 gdf.to_crs(crs=img_src.crs, inplace=True)
 
                 # if requested provide transformed vector file
                 if config.create_gpkg:
                     gdf.to_file(fp.with_suffix(".gpkg"), driver='GPKG', layer='NFL')
-                shapes = [(row.geometry, row.label) for row in gdf.itertuples()] #[(geom, 1) for geom in gdf.geometry]
+
+                # Rasterize the geometries into the raster
+                shapes = [(row.geometry, row.label) for row in gdf.itertuples()]
                 binary_raster = rasterize(shapes, out_shape=config.shape[1:], transform=img_src.transform,
                                           fill=0)
 
-                # add number of objects to state managEr
+                # add number of objects to state manager
                 num_px = config.shape[1] * config.shape[2]
                 counts = gdf['label'].value_counts().to_dict()
 
@@ -501,15 +498,6 @@ def process_vector_data(
                     tile_state.class_distributions[ml] = round(count / num_px, 3)
                     tile_state.class_instance_count[ml] = counts[ml] if ml in counts else 0
 
-
-                # tile_state.num_items = len(filtered_features)
-                # # add the pixel number to state manager
-                # set_pixels = np.count_nonzero(binary_raster == 1)
-                # tile_state.set_pixels = set_pixels
-
-                # psize = config.pixel_size if config.resample_size is None else config.resample_size
-                #tile_state.area_items = round(psize**2 * set_pixels, 2)
-
                 # Save the rasterized binary image
                 with rio.open(
                         fp=fp.with_suffix(".tif"),
@@ -523,25 +511,25 @@ def process_vector_data(
                         transform=img_src.transform
                 ) as dst:
                     dst.write(binary_raster, 1)
-        # write empty image
-        else:
-            print(f'    No results for class {config.mask_label} at lat: {tile_state.lat} // lon: {tile_state.lon}')
-            with rio.open(config.outpath / 'input' / f"input_{tile_state.id}.tif") as img_src:
-                binary_raster = np.zeros((config.shape[1], config.shape[1]), dtype=np.uint8)
+            # write empty image
+            else:
+                print(f'    No results for class {config.mask_label} at lat: {tile_state.lat} // lon: {tile_state.lon}')
+                with rio.open(config.outpath / 'input' / f"input_{tile_state.id}.tif") as img_src:
+                    binary_raster = np.zeros((config.shape[1], config.shape[1]), dtype=np.uint8)
 
-                # Save the rasterized binary image
-                with rio.open(
-                        fp=fp.with_suffix(".tif"),
-                        mode="w+",
-                        driver="GTiff",
-                        height=config.shape[1],
-                        width=config.shape[1],
-                        count=1,
-                        dtype=np.uint8,
-                        crs=img_src.crs,
-                        transform=img_src.transform
-                ) as dst:
-                    dst.write(binary_raster, 1)
+                    # Save the rasterized binary image
+                    with rio.open(
+                            fp=fp.with_suffix(".tif"),
+                            mode="w+",
+                            driver="GTiff",
+                            height=config.shape[1],
+                            width=config.shape[1],
+                            count=1,
+                            dtype=np.uint8,
+                            crs=img_src.crs,
+                            transform=img_src.transform
+                    ) as dst:
+                        dst.write(binary_raster, 1)
     return
 
 
