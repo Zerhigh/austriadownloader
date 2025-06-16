@@ -25,14 +25,12 @@ Provide POIs as a dataframe with the following scheme in the WGS84 format (EPSG:
 
 An example for a config file: 
 
-| id | lat           | lon               |
-|----|---------------|-------------------|
-| 0  | 47.6615683485 | 15.9040047148     |
-| 1  | 47.6730783029 | 15.9045680914     |
-| 2  | 47.6845882247 | 15.9051317152     |
-| 3  | 47.6960981134 | 15.9056955862     |
-| 4  | 47.7076079685 | 15.9062597047     |
-| 5  | 47.7191177895 | 15.9068240708     |
+| id  | lat           | lon           |
+|-----|---------------|---------------|
+| 0   | 47.6615683485 | 15.9040047148 |
+| 1   | 47.6730783029 | 15.9045680914 |
+| 2   | 47.6845882247 | 15.9051317152 |
+| ... | ...           | ...           |
 
 
 Other input parameters are:
@@ -43,31 +41,35 @@ Other input parameters are:
 | `pixel_size`       | `float`                       | Pixel resolution in meters. Must be a predefined value from (0.2, 0.4, 0.8, ... 204.8)                                                                              |
 | `shape`            | `tuple[int, int, int]`        | Image dimensions as `(channels, height, width)`. Channels must be `3` (RGB) or `4` (RGBN).                                                                          |
 | `outpath`          | `Path` or `str`               | Directory path where output files will be saved.                                                                                                                    |
-| `mask_label`       | `list`, `tuple[int]` or `int` | Cadastral mask(s) to be extracted. A single cadastral label will result in a binary mask, if several cadastral labels are provided a multi-label mask is generated. |
-| `mask_remapping`   | `Dict` (default: `None`)      | Allows the selection and merging of several cadastral labels.                                                                                                       |
+| `mask_label`       | `list`, `tuple[int]` or `int` | Cadastral mask(s) to be extracted. A single cadastral label will result in a binary mask, if several cadastral classes are provided a multi-label mask is generated.|
+| `mask_remapping`   | `Dict` (default: `None`)      | Allows the selection and merging of several cadastral classes.                                                                                                      |
 | `create_gpkg`      | `bool` (default: `False`)     | Indicates whether vectorized but unclipped tiles should be saved as `.GPKG`.                                                                                        |
 | `nodata_mode`      | `str` (default: `'flag'`)     | Mode for handling no-data values (`'flag'` or `'remove'`).                                                                                                          |
 | `nodata_value`     | `int` (default: `0`)          | Value assigned to no-data pixels.                                                                                                                                   |
-| `outfile_prefixes` | `Dict`                        | Custom name assignement for ouput files: `raster` -> `input`, `vector` -> `target`                                                                                  |      |
+| `outfile_prefixes` | `Dict`                        | Custom name assignement for ouput files: `raster` -> `input`, `vector` -> `target`                                                                                  |
 | `verbose`          | `bool` (default: `False`)     | Providing verbose comments during script execution.                                                                                                                 |
 
 
 ## Results
 
-Multi-label mask with all available cadastral classes:
+Multi-label mask with all available cadastral classes selected (not all are present in the selected sample):
 
 <p float="left">
   <img src="figures/input_2.png" alt="RGB Orthophoto" width="45%" />
   <img src="figures/target_2.png" alt="Multi-label mask" width="45%" />
 </p>
 
-General overview of different classes merged into a binary mask:
+General overview of different cadastral classes merged into a binary mask:
 
-![Sample Image](results/example_results.png)
+<p float="left">
+  <img src="results/example_results.png" alt="Cadastral classes" width="80%" />
+</p>
 
 Selection of unique cadastral classes:
 
-![Sample Image](results/example_results2.png)
+<p float="left">
+  <img src="results/example_results2.png" alt="Unique classes" width="80%" />
+</p>
 
 
 ## Available Classes

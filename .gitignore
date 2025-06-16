@@ -1,8 +1,6 @@
 output
 .idea
 output_raster_mask
-output_ps2_5_imgs512/output_raster_mask
-output_ps2_5_imgs512/output_vector
 austriadownloader/__pycache__/
 austriadownloader/austria_data/downloaded_data
 
