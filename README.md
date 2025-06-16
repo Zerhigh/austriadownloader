@@ -62,13 +62,13 @@ Multi-label mask with all available cadastral classes selected (not all are pres
 General overview of different cadastral classes merged into a binary mask:
 
 <p float="left">
-  <img src="results/example_results.png" alt="Cadastral classes" width="80%" />
+  <img src="figures/example_results.png" alt="Cadastral classes" width="80%" />
 </p>
 
 Selection of unique cadastral classes:
 
 <p float="left">
-  <img src="results/example_results2.png" alt="Unique classes" width="80%" />
+  <img src="figures/example_results2.png" alt="Unique classes" width="80%" />
 </p>
 
 
