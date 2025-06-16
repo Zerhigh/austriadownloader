@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "austriadownloader"
-version = "0.0.3"
-description = "This is a template repository for Python projects that use Poetry for their dependency management."
+version = "0.0.4"
+description = "Austriadownloader is a Python package for downloading Austrian Cadastral and corresponding Orthophoto data for Deep Learning applications."
 authors = ["Samuel <samuel@plix.at>"]
 repository = "https://github.com/Zerhigh/austriadownloader"
 documentation = "https://Zerhigh.github.io/austriadownloader/"

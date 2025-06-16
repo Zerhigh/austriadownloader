@@ -9,7 +9,7 @@
 - **Github repository**: <https://github.com/Zerhigh/austriadownloader/>
 - **Documentation** <https://Zerhigh.github.io/austriadownloader/>
 
-## Getting started with your project
+## Getting Started
 
 Clone this repository to start developing. 
 All required datasets are available in `austriadownloader/austria_data/` and can be created by executing `austriadownloader/austria_data/metadata_creation.py`.
@@ -32,45 +32,21 @@ An example for a config file:
 | 2   | 47.6845882247 | 15.9051317152 |
 | ... | ...           | ...           |
 
-
 Other input parameters are:
 
-| Column             | Type                          | Description                                                                                                                                                         |
-|--------------------|-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `data_path`        | `Path` or `str`               | Input path for sampled POI table.                                                                                                                                   |
-| `pixel_size`       | `float`                       | Pixel resolution in meters. Must be a predefined value from (0.2, 0.4, 0.8, ... 204.8)                                                                              |
-| `shape`            | `tuple[int, int, int]`        | Image dimensions as `(channels, height, width)`. Channels must be `3` (RGB) or `4` (RGBN).                                                                          |
-| `outpath`          | `Path` or `str`               | Directory path where output files will be saved.                                                                                                                    |
-| `mask_label`       | `list`, `tuple[int]` or `int` | Cadastral mask(s) to be extracted. A single cadastral label will result in a binary mask, if several cadastral classes are provided a multi-label mask is generated.|
-| `mask_remapping`   | `Dict` (default: `None`)      | Allows the selection and merging of several cadastral classes.                                                                                                      |
-| `create_gpkg`      | `bool` (default: `False`)     | Indicates whether vectorized but unclipped tiles should be saved as `.GPKG`.                                                                                        |
-| `nodata_mode`      | `str` (default: `'flag'`)     | Mode for handling no-data values (`'flag'` or `'remove'`).                                                                                                          |
-| `nodata_value`     | `int` (default: `0`)          | Value assigned to no-data pixels.                                                                                                                                   |
-| `outfile_prefixes` | `Dict`                        | Custom name assignement for ouput files: `raster` -> `input`, `vector` -> `target`                                                                                  |
-| `verbose`          | `bool` (default: `False`)     | Providing verbose comments during script execution.                                                                                                                 |
-
-
-## Results
-
-Multi-label mask with all available cadastral classes selected (not all are present in the selected sample):
-
-<p float="left">
-  <img src="figures/input_2.png" alt="RGB Orthophoto" width="45%" />
-  <img src="figures/target_2.png" alt="Multi-label mask" width="45%" />
-</p>
-
-General overview of different cadastral classes merged into a binary mask:
-
-<p float="left">
-  <img src="figures/example_results.png" alt="Cadastral classes" width="80%" />
-</p>
-
-Selection of unique cadastral classes:
-
-<p float="left">
-  <img src="figures/example_results2.png" alt="Unique classes" width="80%" />
-</p>
-
+| Column             | Type                            | Description                                                                                                                                                           |
+|--------------------|---------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `data_path`        | `Path` or `str`                 | Input path for sampled POI table.                                                                                                                                     |
+| `pixel_size`       | `float`                         | Pixel resolution in meters. Must be a predefined value from (0.2, 0.4, 0.8, ... 204.8)                                                                                |
+| `shape`            | `tuple[int, int, int]`          | Image dimensions as `(channels, height, width)`. Channels must be `3` (RGB) or `4` (RGBN).                                                                            |
+| `outpath`          | `Path` or `str`                 | Directory path where output files will be saved.                                                                                                                      |
+| `mask_label`       | `list`, `tuple[int]` or `int`   | Cadastral mask(s) to be extracted. A single cadastral label will result in a binary mask, if several cadastral classes are provided a multi-label mask is generated.  |
+| `mask_remapping`   | `Dict` (default: `None`)        | Allows the selection and merging of several cadastral classes.                                                                                                        |
+| `create_gpkg`      | `bool` (default: `False`)       | Indicates whether vectorized but unclipped tiles should be saved as `.GPKG`.                                                                                          |
+| `nodata_mode`      | `str` (default: `'flag'`)       | Mode for handling no-data values (`'flag'` or `'remove'`).                                                                                                            |
+| `nodata_value`     | `int` (default: `0`)            | Value assigned to no-data pixels.                                                                                                                                     |
+| `outfile_prefixes` | `Dict`                          | Custom name assignement for ouput files: `raster` -> `input`, `vector` -> `target`                                                                                    |
+| `verbose`          | `bool` (default: `False`)       | Providing verbose comments during script execution.                                                                                                                   |
 
 ## Available Classes
 
@@ -105,14 +81,30 @@ To select your class labels, select one or more from the following list:
 | Gardens            | 52       | Gardens                           |
 | Alps               | 54       | Alps                              |
 
-## Releasing a new version
+## Results
 
-- Create an API Token on [PyPI](https://pypi.org/).
-- Add the API Token to your projects secrets with the name `PYPI_TOKEN` by visiting [this page](https://github.com/Zerhigh/austriadownloader/settings/secrets/actions/new).
-- Create a [new release](https://github.com/Zerhigh/austriadownloader/releases/new) on Github.
-- Create a new tag in the form `*.*.*`.
-- For more details, see [here](https://fpgmaas.github.io/cookiecutter-poetry/features/cicd/#how-to-trigger-a-release).
+Multi-label mask with all available cadastral classes selected (not all are present in the selected sample):
 
----
+<p float="left">
+  <img src="figures/input_2.png" alt="RGB Orthophoto" width="45%" />
+  <img src="figures/target_2.png" alt="Multi-label mask" width="45%" />
+</p>
+
+General overview of different cadastral classes merged into a binary mask:
+
+<p float="left">
+  <img src="figures/example_results.png" alt="Cadastral classes" width="80%" />
+</p>
+
+Selection of unique cadastral classes:
+
+<p float="left">
+  <img src="figures/example_results2.png" alt="Unique classes" width="80%" />
+</p>
+
+
+# Citation
+
+This repository was created for a presentation at the AGIT 2025 conference.
 
 Repository initiated with [fpgmaas/cookiecutter-poetry](https://github.com/fpgmaas/cookiecutter-poetry).
