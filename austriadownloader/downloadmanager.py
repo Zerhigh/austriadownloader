@@ -60,7 +60,7 @@ class DownloadManager(BaseModel):
         try:
             # save config file
             save_config = {k: str(v) if isinstance(v, pathlib.Path) else v for k, v in self.config.config_data.items()}
-            with open(pathlib.Path(self.config.config_data['outpath']) / 'config.yml', "w") as f:
+            with open(pathlib.Path(self.config.config_data['outpath']) / 'rgb.yml', "w") as f:
                 yaml.safe_dump(save_config, f, sort_keys=False)
 
             # add logging info

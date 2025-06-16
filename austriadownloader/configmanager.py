@@ -65,7 +65,7 @@ class ConfigManager(BaseModel):
         elif isinstance(value, (float, int)) and value > 0:
             return float(value)
         else:
-            raise ValueError("Provide as float, int or None - null in config.yml")
+            raise ValueError("Provide as float, int or None - null in rgb.yml")
 
     @field_validator("shape")
     @classmethod

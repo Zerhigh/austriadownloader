@@ -193,7 +193,7 @@ class MetaDataCreator:
 
 if __name__ == "__main__":
     """
-    Execute this script if you want to adapt or update the matched_metadata.gpkg file used for querying raster and vector data. 
+        Execute this script if you want to adapt or update the matched_metadata.gpkg file used for querying raster and vector data. 
     """
 
     t = MetaDataCreator(verbose=True)
