@@ -1,5 +1,10 @@
 # Parent class: DownloadManager (Manages the overall download process)
+import datetime
 import os
+import pathlib
+import time
+
+import yaml
 import pandas as pd
 
 from typing import Tuple, Optional, Dict
@@ -17,6 +22,8 @@ class DownloadManager(BaseModel):
     state: pd.DataFrame = None # = Field(default_factory=lambda: pd.DataFrame(columns=('id', 'aerial', 'cadster', 'num_items', 'area_items', 'contains_nodata')))
     #cols: Tuple[str, ...] = ('id', 'aerial', 'cadster', 'num_items', 'area_items')
     tiles: pd.DataFrame = None
+
+    log: Dict = {}
 
     class Config:
         arbitrary_types_allowed = True  # Allows using non-Pydantic types like pd.DataFrame
@@ -52,12 +59,37 @@ class DownloadManager(BaseModel):
     def start_download(self):
         """Initiates the download process based on the specified method in the configuration."""
         try:
+            # save config file
+            save_config = {k: str(v) if isinstance(v, pathlib.Path) else v for k, v in self.config.config_data.items()}
+            with open(pathlib.Path(self.config.config_data['outpath']) / 'config.yml', "w") as f:
+                yaml.safe_dump(save_config, f, sort_keys=False)
+
+            # add logging info
+            self.log['Start Time'] = datetime.datetime.now()
+            self.log['Errors'] = None
+
             if self.config.download_method == 'sequential':
                 self.download_sequential()
             elif self.config.download_method == 'parallel':
                 self.download_parallel()
         except Exception as e:
+            self.log['Errors'] = e
+            self.end_of_download()
             print(f"Error downloading tiles: {e}")
+
+    def end_of_download(self):
+        # save downlaod log
+        self.log['End Time'] = datetime.datetime.now()
+        self.log['Duration'] = str(self.log['End Time'] - self.log['Start Time'])
+        self.log['Number of Processed tiles'] = len(self.tiles)
+
+        with open(pathlib.Path(self.config.config_data['outpath']) / 'log.yml', "w") as f:
+            yaml.safe_dump(self.log, f, sort_keys=False)
+
+        # Save the state log
+        self.state.to_csv(f'{self.config.outpath}/statelog.csv', index=False)
+
+        return
 
     def download_sequential(self) -> None:
         """Downloads tiles sequentially, ensuring each tile is processed one at a time.
@@ -81,8 +113,7 @@ class DownloadManager(BaseModel):
             if i % 100 == 0:
                 self.state.to_csv(f'{self.config.outpath}/statelog.csv', index=False)
 
-        self.state.to_csv(f'{self.config.outpath}/statelog.csv', index=False)
-
+        self.end_of_download()
         return
 
     def _parallel(self, row: pd.Series) -> Tuple[str, Dict[str, any] | None]:
@@ -125,6 +156,5 @@ class DownloadManager(BaseModel):
             if state:  # If state is not None, update the manager
                 self.add_row(state)
 
-        # Save the state log
-        self.state.to_csv(f'{self.config.outpath}/statelog.csv', index=False)
+        self.end_of_download()
         return

@@ -35,6 +35,11 @@ class ConfigManager(BaseModel):
     class Config:
         frozen = True  # Make instances immutable
 
+    @property
+    def config_data(self) -> Dict[str, Any]:
+        """Return all fields as a dict including defaults and validated data."""
+        return self.model_dump()
+
     @field_validator("nodata_mode")
     @classmethod
     def validate_nodata_mode(cls, value: str) -> str:
@@ -127,7 +132,7 @@ class ConfigManager(BaseModel):
             if self.resample_size <= self.pixel_size:
                 raise ValueError(f"resample_size {self.resample_size} must be larger than pixel_size {self.pixel_size}")
             elif self.resample_size >= VALID_PIXEL_SIZES[VALID_PIXEL_SIZES.index(self.pixel_size)+1]:
-                raise ValueError(f"resample_size {self.resample_size} must be smalelr than next largest available pixel size: {VALID_PIXEL_SIZES[VALID_PIXEL_SIZES.index(self.pixel_size)+1]}")
+                raise ValueError(f"resample_size {self.resample_size} must be smaller than next largest available pixel size: {VALID_PIXEL_SIZES[VALID_PIXEL_SIZES.index(self.pixel_size)+1]}")
             else:
                 return self
         else:

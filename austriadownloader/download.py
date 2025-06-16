@@ -471,7 +471,9 @@ def process_vector_data(
                 # add no data value
                 tile_state.class_distributions[0] = round(np.count_nonzero(binary_raster == 0) / num_px, 3)
 
-                for ml in config.mask_label:
+                pixel_labels = config.mask_label if config.mask_remapping is None else set(config.mask_remapping.values())
+
+                for ml in pixel_labels: #config.mask_label
                     count = np.count_nonzero(binary_raster == ml)
                     tile_state.class_distributions[ml] = round(count / num_px, 3)
                     tile_state.class_instance_count[ml] = counts[ml] if ml in counts else 0

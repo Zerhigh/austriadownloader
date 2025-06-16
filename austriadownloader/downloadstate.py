@@ -31,8 +31,10 @@ class DownloadState(BaseModel):
             'ortho_contains_nodata': self.ortho_contains_nodata
         }
 
-        for (kd, vd), (kc, vc) in zip(self.class_distributions.items(), self.class_instance_count.items()):
+        for kd, vd in self.class_distributions.items():
             base[f'dist_{kd}'] = vd
+
+        for kc, vc in self.class_instance_count.items():
             base[f'count_{kc}'] = vc
 
         return base
