@@ -1,12 +1,12 @@
-data_path: "./demo/demo_short.csv"
+data_path: "./demo/demo.csv"
 pixel_size: 1.6
 resample_size: null
-shape: [4, 1000, 1000] #[4, 512, 512]  #[4, 1000, 1000]
-outpath: "./output/test_short_1000_remapped"
+shape: [3, 1000, 1000] #[4, 512, 512]  #[4, 1000, 1000]
+outpath: "./output/test_1000_remapped_rgb"
 download_method: 'sequential'
-mask_label:  [41, 42, 58, 56, 60, 61, 62] #[40, 41, 42, 48, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 72, 83, 84, 87, 88, 92, 95, 96]
+mask_label:  [40, 41, 42, 48, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 72, 83, 84, 87, 88, 92, 95, 96] # [41, 42, 58, 56, 60, 61, 62]
 create_gpkg: True
 nodata_mode: "flag"
 nodata_value: 0
 verbose: False
-mask_remapping: {1: 41, 2: [58, 42], 7: [56, 60, 61, 62]}
+#mask_remapping: {1: 41, 2: [58, 42], 7: [56, 60, 61, 62]}

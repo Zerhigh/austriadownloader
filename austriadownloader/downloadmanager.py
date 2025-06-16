@@ -2,7 +2,6 @@
 import datetime
 import os
 import pathlib
-import time
 
 import yaml
 import pandas as pd
@@ -38,8 +37,8 @@ class DownloadManager(BaseModel):
             if isinstance(config, ConfigManager) and hasattr(config, "data_path"):
                 data["tiles"] = pd.read_csv(config.data_path)
 
-        # VALIDATION
-        if set(config.mask_label) != set(config.mask_remapping.keys()):
+        # If its set, validate remapping again
+        if config.mask_remapping is not None and set(config.mask_label) != set(config.mask_remapping.keys()):
             raise Warning(f"Selected mask_label ({config.mask_label}) is not identical to provided mask_remapping labels ({list(config.mask_remapping.keys())})! "
                           f"This will lead to unexpected behaviour if not corrected.")
         return data

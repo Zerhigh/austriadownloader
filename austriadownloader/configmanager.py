@@ -1,7 +1,6 @@
 import json
-import os
-
 import yaml
+
 from pathlib import Path
 from typing import Literal, Final, TypeAlias, Dict, Any, List, Tuple
 from pydantic import BaseModel, field_validator, ValidationError, model_validator
@@ -39,6 +38,17 @@ class ConfigManager(BaseModel):
     def config_data(self) -> Dict[str, Any]:
         """Return all fields as a dict including defaults and validated data."""
         return self.model_dump()
+
+    @field_validator("outfile_prefixes")
+    @classmethod
+    def validate_outfile_prefixes(cls, value: Dict[str, str]) -> Dict[str, str]:
+        prefixes = ['raster', 'vector']
+        if len(value) != 2:
+            raise ValueError(f"Irregular Prefix Dictionary length of {len(value)}")
+        for k in value.keys():
+            if k not in prefixes:
+                raise ValueError(f"Prefix '{k}' must match to ['raster', 'vector'].")
+        return value
 
     @field_validator("nodata_mode")
     @classmethod
@@ -101,9 +111,13 @@ class ConfigManager(BaseModel):
         else:
             return value
 
-    @field_validator("mask_remapping")
+    @field_validator("mask_remapping", mode="before")
     @classmethod
     def validate_mask_remapping(cls, value: Dict[int, Any]) -> Dict[int, List[int]]:
+        # optional value
+        if value is None:
+            return None
+
         # invert mapping dict to have FROM - TO
         new = {}
         for k, v in value.items():
