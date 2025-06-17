@@ -1,7 +1,6 @@
 import time
 from pathlib import Path
 
-import numpy
 from austriadownloader.downloadmanager import DownloadManager
 from austriadownloader.configmanager import ConfigManager
 
@@ -34,13 +33,11 @@ if __name__ == "__main__":
         54: "Alps"
     }
 
+    # Start the small scale sample of five points
     start_time = time.time()
 
-    config_path = Path("config.yml")
+    config_path = Path("./configs/small_config.yml")
     manager = DownloadManager(config=ConfigManager.from_config_file(config_path))
     manager.start_download()
 
     end_time = time.time()
-
-    print(f'Download took: {round(end_time - start_time, 2)}')
-    pass

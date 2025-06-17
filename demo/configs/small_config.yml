@@ -1,0 +1,21 @@
+data_path: "./samples/small_austria.csv"
+pixel_size: 1.6
+resample_size: null
+shape: [3, 800, 800]
+outpath: "./output/demo_small_austria"
+download_method: 'sequential'
+mask_label:  [40, 41, 42, 48, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 72, 83, 84, 87, 88, 92, 95, 96]
+create_gpkg: True
+nodata_mode: "flag"
+nodata_value: 0
+verbose: True
+mask_remapping: {
+    1: [41, 83],                     # Building areas
+    2: [59, 60, 61, 64],             # Water body
+    3: [40, 48, 53, 57],             # Agricultural
+    4: [55, 56, 58],                 # Forest
+    5: [42, 62, 63, 65, 72, 84, 87, 88, 92, 95, 96],  # Other
+    6: [52],                         # Gardens
+    7: [54]                          # Alps
+}
+

@@ -1,4 +1,4 @@
-data_path: "./demo/demo.csv"
+data_path: "./demo/small_austria.csv"
 pixel_size: 1.6
 resample_size: null
 shape: [3, 1000, 1000] #[4, 512, 512]  #[4, 1000, 1000]

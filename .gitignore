@@ -2,10 +2,10 @@ output
 .idea
 austriadownloader/__pycache__/
 austriadownloader/austria_data/downloaded_data
-demo/
 demo.py
 poetry.lock
 dist
 build
 .venv
 *.tif
+demo/output
