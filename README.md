@@ -22,6 +22,8 @@ All required meta-datasets are available in `austriadownloader/austria_data/` an
 Provide sample image POIs as centroids in a dataframe with the following scheme in the WGS84 CRS (EPSG:4326). Image dimensions will be determined by other input parameters such as `pixel_size` and `shape`.
 An independent (but closely related) git-repository for automatically creating such a sample file is available under [austriadownloader_sampler](https://github.com/Zerhigh/austriadownloader_sampler).
 
+Sample file structure:
+
 | Column | Type  | Description                             |
 |--------|-------|-----------------------------------------|
 | `id`   | str   | Unique identifier for each location     |
@@ -46,7 +48,7 @@ from pathlib import Path
 from austriadownloader.downloadmanager import DownloadManager
 from austriadownloader.configmanager import ConfigManager
 
-config_path = Path("config.yml")
+config_path = Path("path_to_your_config.yml")
 manager = DownloadManager(config=ConfigManager.from_config_file(config_path))
 manager.start_download()
 ```
@@ -67,7 +69,7 @@ Input parameters are provided in the config file and include:
 | `outfile_prefixes` | `Dict` (default: `input` and `target`) | Custom name assignement for ouput files: `raster` -> `input`, `vector` -> `target`                                                                                   |
 | `verbose`          | `bool` (default: `False`)              | Providing verbose comments during script execution.                                                                                                                  |
 
-## Available Classes
+### Available Classes
 
 To select your class labels, select one or more from the following list (Source: [BEV, page 12 ff.](https://data.bev.gv.at/download/Kataster/gpkg/national/BEV_S_KA_Katastralmappe_Grundstuecksdaten_GPKG_V1.0.pdf)):
 
@@ -100,7 +102,7 @@ To select your class labels, select one or more from the following list (Source:
 | Gardens            | 52       | Gardens                           |
 | Alps               | 54       | Alps                              |
 
-## Results
+### Results
 
 Multi-label mask with all available cadastral classes selected (not all are present in the selected sample):
 
@@ -122,7 +124,7 @@ Selection of unique cadastral classes:
 </p>
 
 
-# Citation
+### Citation
 
 This repository was created for a presentation at the AGIT 2025 conference.
 
