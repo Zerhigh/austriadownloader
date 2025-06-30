@@ -186,7 +186,7 @@ def download_rasterdata_rgb(tile_state: DownloadState, config: ConfigManager, ra
 
         with rio.open(raster_data["RGB_raster"], overview_level=overview_level) as src:
             window, profile = prepare_raster_window(src, point, config)
-            data = src.read(window=window)
+            data = src.read(window=window, boundless=True)
 
             # experimental check? should be portable to both rgb and rgbnir
             process_raster_data(tile_state=tile_state,
@@ -285,10 +285,10 @@ def download_rasterdata_rgbn(tile_state: DownloadState, config: ConfigManager, r
 
         with rio.open(raster_data["RGB_raster"], overview_level=overview_level) as src_rgb:
             window, profile = prepare_raster_window(src_rgb, point, config)
-            data_rgb = src_rgb.read(window=window)
+            data_rgb = src_rgb.read(window=window, boundless=True)
 
             with rio.open(raster_data["NIR_raster"], overview_level=overview_level) as src_nir:
-                data_nir = src_nir.read(window=window)
+                data_nir = src_nir.read(window=window, boundless=True)
                 data_total = np.concatenate([data_rgb, data_nir], axis=0)
 
                 # experimental check? should be portable to both rgb and rgbnir
